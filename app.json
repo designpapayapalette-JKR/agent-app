@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Agent",
+    "slug": "agent-app",
+    "scheme": "agentapp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "backgroundColor": "#FAF9F6",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.papayapalette.agent"
+    },
+    "android": {
+      "package": "com.papayapalette.agent"
+    },
+    "plugins": ["expo-router", "expo-dev-client"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
