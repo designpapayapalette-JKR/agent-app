@@ -61,6 +61,18 @@ export default function ExpensesScreen() {
     fetchExpenses();
   }, [user]);
 
+  const closeExpenseModal = () => {
+    const hasChanges = amount.trim() !== "" || notes.trim() !== "" || attachedFileName !== "";
+    if (hasChanges) {
+      Alert.alert("Discard changes?", "You have unsaved changes. Are you sure you want to go back?", [
+        { text: "Keep Editing", style: "cancel" },
+        { text: "Discard", style: "destructive", onPress: () => setIsModalOpen(false) },
+      ]);
+      return;
+    }
+    setIsModalOpen(false);
+  };
+
   const handleSimulateAttachment = async () => {
     setAttachedFileName("receipt_slip.jpg (Uploading...)");
     // Simulate uploading a mock file to Directus
@@ -186,13 +198,13 @@ export default function ExpensesScreen() {
       )}
 
       {/* Log Claim Modal */}
-      <Modal visible={isModalOpen} animationType="slide">
+      <Modal visible={isModalOpen} animationType="slide" onRequestClose={closeExpenseModal}>
         <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pb-10" style={{ paddingTop: topInset }}>
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-2xl font-bold text-text-primary dark:text-text-primary-dark">
               Log Expense Claim
             </Text>
-            <Pressable onPress={() => setIsModalOpen(false)} className="w-11 h-11 items-center justify-center">
+            <Pressable onPress={closeExpenseModal} className="w-11 h-11 items-center justify-center">
               <MaterialCommunityIcons name="close" size={20} color="#6B7280" />
             </Pressable>
           </View>
@@ -274,7 +286,7 @@ export default function ExpensesScreen() {
 
           <View className="flex-row justify-between mt-10" style={{ marginBottom: bottomInset }}>
             <Pressable
-              onPress={() => setIsModalOpen(false)}
+              onPress={closeExpenseModal}
               className="border border-gray-200 dark:border-zinc-800 py-4 px-6 rounded-xl w-[48%] items-center"
             >
               <Text className="text-text-secondary dark:text-text-secondary-dark font-bold text-base">Cancel</Text>

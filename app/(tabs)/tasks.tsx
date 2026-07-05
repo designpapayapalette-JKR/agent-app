@@ -151,7 +151,7 @@ export default function TasksScreen() {
               Alert.alert(
                 "Updated",
                 next === "done"
-                  ? "Task marked as complete! Great work 🎉"
+                  ? "Task marked as complete! Great work."
                   : "Task is now In Progress."
               );
             } catch (e) {
