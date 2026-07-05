@@ -15,9 +15,9 @@ npx expo start --dev-client
 
 ## Structure
 
-- `app/` — Expo Router routes: `(auth)/login`, `(tabs)/{index,attendance,tasks,walkie-talkie,expenses,profile}` — placeholders only, wired up per Phase 3 of the roadmap
+- `app/` — Expo Router routes: `(auth)/login`, `(tabs)/{index,attendance,tasks,walkie-talkie,expenses,profile,location-permission}`
 - `src/theme/colors.ts` — same Stitch color tokens as `shopkeeper-app` (duplicated deliberately, not shared-packaged — two independent products)
-- `src/lib/directus.ts` — Directus SDK client stub, reads `EXPO_PUBLIC_API_URL`
+- `src/lib/api.ts` — API client for shopkeeper-api, reads `EXPO_PUBLIC_API_URL`
 - `src/components/` — shared UI components
 
 ## Not installed yet

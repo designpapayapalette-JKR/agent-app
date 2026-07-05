@@ -1,5 +1,337 @@
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Text,
+  View,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+  Switch,
+  useColorScheme,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useAuth } from "../../src/lib/auth-context";
+import { api } from "../../src/lib/api";
+import { useTopInset } from "../../src/lib/useTopInset";
+
+const APP_VERSION = "1.0.0-alpha";
+
+interface MonthlyStats {
+  daysPresent: number;
+  expensesSubmitted: number;
+  expensesTotal: number;
+  tasksCompleted: number;
+}
+
+function getInitials(firstName?: string, lastName?: string) {
+  const f = firstName?.[0] ?? "";
+  const l = lastName?.[0] ?? "";
+  return (f + l).toUpperCase() || "A";
+}
+
+function capitalize(s: string) {
+  if (!s) return "";
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
+}
+
+const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
+  field_agent: { bg: "bg-blue-100 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" },
+  staff: { bg: "bg-purple-100 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" },
+  manager: { bg: "bg-amber-100 dark:bg-amber-950/30", text: "text-amber-700 dark:text-amber-400" },
+  owner: { bg: "bg-green-100 dark:bg-green-950/30", text: "text-green-700 dark:text-green-400" },
+};
 
 export default function ProfileScreen() {
-  return <PlaceholderScreen title="Profile" />;
+  const { user, activeCompany, logout } = useAuth();
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const topInset = useTopInset();
+  const [stats, setStats] = useState<MonthlyStats>({
+    daysPresent: 0,
+    expensesSubmitted: 0,
+    expensesTotal: 0,
+    tasksCompleted: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const monthStart = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const loadStats = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const [attRes, expRes, taskRes] = await Promise.all([
+        api.get<{ data: any[] }>("/attendance").catch(() => ({ data: [] })),
+        api.get<{ data: any[] }>("/expenses").catch(() => ({ data: [] })),
+        api.get<{ data: any[] }>("/agent-tasks").catch(() => ({ data: [] })),
+      ]);
+
+      const daysPresent = (attRes.data ?? []).filter(
+        (a) => a.date >= monthStart && a.status === "present"
+      ).length;
+
+      const monthExpenses = (expRes.data ?? []).filter((e) => e.date >= monthStart);
+      const expCount = monthExpenses.length;
+      const expTotal = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount || "0"), 0);
+
+      const tasksDone = (taskRes.data ?? []).filter((t) => t.status === "done").length;
+
+      setStats({
+        daysPresent,
+        expensesSubmitted: expCount,
+        expensesTotal: expTotal,
+        tasksCompleted: tasksDone,
+      });
+    } catch (e) {
+      console.error("Failed to load profile stats:", e);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out of the Employee App?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            setLoggingOut(true);
+            try {
+              await logout();
+            } catch (e) {
+              console.error("Logout error:", e);
+            } finally {
+              setLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const roleMeta =
+    ROLE_COLORS[user?.role?.toLowerCase() ?? "field_agent"] ??
+    ROLE_COLORS.field_agent;
+
+  return (
+    <ScrollView
+      className="flex-1 bg-background dark:bg-background-dark"
+      showsVerticalScrollIndicator={false}
+    >
+      {/* ── Hero Header ── */}
+      <View className="bg-primary dark:bg-primary-dark px-6 pb-8 items-center" style={{ paddingTop: topInset }}>
+        {/* Avatar */}
+        <View className="w-20 h-20 rounded-full bg-white/20 border-4 border-white/30 justify-center items-center mb-4">
+          <Text className="text-white font-black text-3xl">
+            {getInitials(user?.first_name, user?.last_name)}
+          </Text>
+        </View>
+
+        {/* Name */}
+        <Text className="text-white text-2xl font-black text-center">
+          {user?.first_name ?? ""} {user?.last_name ?? ""}
+        </Text>
+        <Text className="text-white/70 text-sm text-center mt-0.5">
+          {user?.email ?? ""}
+        </Text>
+
+        {/* Role + Company */}
+        <View className="flex-row gap-2 mt-3 flex-wrap justify-center">
+          {user?.role && (
+            <View className="bg-white/15 px-3 py-1.5 rounded-full border border-white/20">
+              <Text className="text-white text-sm font-bold uppercase tracking-wider">
+                {capitalize(user.role)}
+              </Text>
+            </View>
+          )}
+          {activeCompany?.name && (
+            <View className="bg-white/10 px-3 py-1.5 rounded-full border border-white/15 flex-row items-center" style={{ gap: 5 }}>
+              <MaterialCommunityIcons name="office-building" size={14} color="#FFFFFF" style={{ opacity: 0.8 }} />
+              <Text className="text-white/80 text-sm font-semibold">
+                {activeCompany.name}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View className="px-6 pt-6 pb-12">
+        {/* ── This Month Stats ── */}
+        <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+          This Month's Activity
+        </Text>
+
+        {loadingStats ? (
+          <View className="bg-surface dark:bg-surface-dark rounded-2xl p-8 border border-gray-100 dark:border-zinc-800 items-center mb-6">
+            <ActivityIndicator size="small" color="#0F7A5F" />
+          </View>
+        ) : (
+          <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
+            <View className="flex-row">
+              {/* Days Present */}
+              <View className="flex-1 p-4 items-center border-r border-gray-100 dark:border-zinc-800">
+                <Text className="text-2xl font-black text-primary dark:text-primary-dark">
+                  {stats.daysPresent}
+                </Text>
+                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wide text-center mt-0.5">
+                  Days Present
+                </Text>
+              </View>
+              {/* Tasks Done */}
+              <View className="flex-1 p-4 items-center border-r border-gray-100 dark:border-zinc-800">
+                <Text className="text-2xl font-black text-primary dark:text-primary-dark">
+                  {stats.tasksCompleted}
+                </Text>
+                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wide text-center mt-0.5">
+                  Tasks Done
+                </Text>
+              </View>
+              {/* Expenses */}
+              <View className="flex-1 p-4 items-center">
+                <Text className="text-2xl font-black text-primary dark:text-primary-dark">
+                  {stats.expensesSubmitted}
+                </Text>
+                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wide text-center mt-0.5">
+                  Expenses Filed
+                </Text>
+              </View>
+            </View>
+
+            {/* Expense total bar */}
+            {stats.expensesTotal > 0 && (
+              <View className="border-t border-gray-100 dark:border-zinc-800 px-4 py-3 flex-row items-center justify-between">
+                <Text className="text-sm text-text-secondary font-semibold">
+                  Total expense amount claimed
+                </Text>
+                <Text className="text-sm font-black text-text-primary dark:text-text-primary-dark">
+                  ₹{stats.expensesTotal.toFixed(2)}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── Account Info ── */}
+        <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+          Account
+        </Text>
+        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
+          {[
+            { label: "Full Name", value: `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—" },
+            { label: "Email", value: user?.email ?? "—" },
+            { label: "Role", value: capitalize(user?.role ?? "—") },
+            { label: "Company", value: activeCompany?.name ?? "—" },
+          ].map((row, idx, arr) => (
+            <View
+              key={row.label}
+              className={`px-4 py-3.5 flex-row items-center justify-between ${
+                idx < arr.length - 1
+                  ? "border-b border-gray-100 dark:border-zinc-800"
+                  : ""
+              }`}
+            >
+              <Text className="text-sm font-semibold text-text-secondary">
+                {row.label}
+              </Text>
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark flex-1 text-right ml-4" numberOfLines={1}>
+                {row.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── My Records ── */}
+        <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+          My Records
+        </Text>
+        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
+          <Pressable
+            onPress={() => router.push("/salary" as any)}
+            className="px-4 py-3.5 flex-row items-center justify-between border-b border-gray-100 dark:border-zinc-800"
+          >
+            <View className="flex-row items-center" style={{ gap: 10 }}>
+              <MaterialCommunityIcons name="cash-multiple" size={18} color="#0F7A5F" />
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">My Salary</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#9E9E9E" />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/documents" as any)}
+            className="px-4 py-3.5 flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center" style={{ gap: 10 }}>
+              <MaterialCommunityIcons name="card-account-details-outline" size={18} color="#0F7A5F" />
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">My Documents & ID Cards</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#9E9E9E" />
+          </Pressable>
+        </View>
+
+        {/* ── App Info ── */}
+        <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+          App Info
+        </Text>
+        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
+          {[
+            { label: "App Version", value: APP_VERSION },
+            { label: "Platform", value: "React Native (Expo)" },
+            { label: "Color Scheme", value: capitalize(colorScheme ?? "system") },
+          ].map((row, idx, arr) => (
+            <View
+              key={row.label}
+              className={`px-4 py-3.5 flex-row items-center justify-between ${
+                idx < arr.length - 1
+                  ? "border-b border-gray-100 dark:border-zinc-800"
+                  : ""
+              }`}
+            >
+              <Text className="text-sm font-semibold text-text-secondary">
+                {row.label}
+              </Text>
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                {row.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── Logout ── */}
+        <Pressable
+          onPress={handleLogout}
+          disabled={loggingOut}
+          className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl py-4 items-center flex-row justify-center gap-2 active:opacity-80"
+        >
+          {loggingOut ? (
+            <ActivityIndicator size="small" color="#D64545" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
+              <Text className="text-red-600 dark:text-red-400 font-bold text-lg">
+                Sign Out
+              </Text>
+            </>
+          )}
+        </Pressable>
+
+        <Text className="text-center text-text-secondary text-sm mt-4 font-medium">
+          Shopkeeper ERP · Employee App · v{APP_VERSION}
+        </Text>
+      </View>
+    </ScrollView>
+  );
 }
