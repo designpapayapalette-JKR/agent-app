@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Agent",
+    "name": "Employee",
     "slug": "agent-app",
     "scheme": "agentapp",
     "version": "0.1.0",
@@ -13,11 +13,38 @@
       "bundleIdentifier": "com.papayapalette.agent"
     },
     "android": {
-      "package": "com.papayapalette.agent"
+      "package": "com.papayapalette.agent",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
-    "plugins": ["expo-router", "expo-dev-client"],
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      "expo-secure-store",
+      "@config-plugins/react-native-webrtc",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8083e2d8-44bc-4723-a987-beeb60867bc6"
+      }
+    },
+    "owner": "papayapalette"
   }
 }
