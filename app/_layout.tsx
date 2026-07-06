@@ -19,6 +19,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { colorScheme } from "nativewind";
 import type * as LocationTypes from "expo-location";
 import { AuthProvider, useAuth } from "../src/lib/auth-context";
 import { safeRequireExpoLocation } from "../src/lib/isExpoGo";
@@ -27,6 +28,10 @@ import {
   stopTracking,
   isTracking,
 } from "../src/lib/location-tracker";
+
+// Light-theme only, same as shopkeeper-app — overrides NativeWind's "media"
+// (system) mode so the UI doesn't break on devices with system dark mode on.
+colorScheme.set("light");
 
 function NavigationGuard() {
   const { isAuthenticated, isLoading, user } = useAuth();
