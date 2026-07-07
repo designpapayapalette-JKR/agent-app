@@ -13,6 +13,8 @@ import type { ComponentProps } from "react";
 import { useAuth } from "../../src/lib/auth-context";
 import { api } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
+import { useTerminology } from "../../src/lib/terminology-context";
+import { getQueuedCount, syncQueuedData } from "../../src/lib/offlineQueue";
 
 type MCIName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -55,6 +57,7 @@ function getInitials(firstName?: string, lastName?: string) {
 
 export default function HomeScreen() {
   const { user, activeCompany } = useAuth();
+  const { t } = useTerminology();
   const router = useRouter();
   const topInset = useTopInset();
 
@@ -67,11 +70,18 @@ export default function HomeScreen() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     .toISOString()
     .slice(0, 10);
+
+  const checkSyncCount = useCallback(async () => {
+    const count = await getQueuedCount();
+    setPendingSyncCount(count);
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     if (!user?.id) return;
@@ -139,11 +149,13 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]);
+    checkSyncCount();
+  }, [loadDashboard, checkSyncCount]);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadDashboard();
+    checkSyncCount();
   };
 
   const capitalize = (s: string) =>
@@ -226,37 +238,78 @@ export default function HomeScreen() {
           />
           <Text className="text-white font-bold text-sm flex-1">
             {stats.isCheckedInToday
-              ? "Attendance marked for today"
-              : "You haven't checked in today yet"}
+              ? (t("staff")?.includes("कामगार") ? "आज की हाजिरी लग गई है" : "Attendance marked for today")
+              : (t("staff")?.includes("कामगार") ? "आज आपकी हाजिरी नहीं लगी है" : "You haven't checked in today yet")}
           </Text>
           {!stats.isCheckedInToday && (
             <Pressable
               onPress={() => router.push("/attendance")}
               className="bg-white/25 px-4 py-2.5 rounded-xl active:opacity-80"
             >
-              <Text className="text-white text-sm font-bold">Check In</Text>
+              <Text className="text-white text-sm font-bold">
+                {t("staff")?.includes("कामगार") ? "चेक इन करें" : "Check In"}
+              </Text>
             </Pressable>
           )}
         </View>
       </View>
 
       <View className="px-6 pt-6 pb-10">
+        {/* ── Offline Sync Banner ── */}
+        {pendingSyncCount > 0 && (
+          <View className="mb-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 flex-row items-center justify-between">
+            <View className="flex-row items-center flex-1 mr-3" style={{ gap: 8 }}>
+              <MaterialCommunityIcons name="cloud-sync" size={20} color="#B45309" />
+              <View className="flex-1">
+                <Text className="text-amber-800 dark:text-amber-400 font-bold text-sm">
+                  {t("staff")?.includes("कामगार") ? "ऑफ़लाइन डेटा सिंक करना बाकी है" : "Offline Data Pending"}
+                </Text>
+                <Text className="text-amber-600 dark:text-amber-500 text-xs mt-0.5">
+                  {pendingSyncCount} {t("staff")?.includes("कामगार") ? "रिकॉर्ड सिंक होना बाकी है" : "records waiting to sync"}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={async () => {
+                if (syncing) return;
+                setSyncing(true);
+                await syncQueuedData();
+                await checkSyncCount();
+                await loadDashboard();
+                setSyncing(false);
+              }}
+              disabled={syncing}
+              className="bg-amber-600 px-4 py-2.5 rounded-xl active:opacity-90 flex-row items-center"
+              style={{ gap: 4 }}
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="sync" size={14} color="#FFFFFF" />
+                  <Text className="text-white text-xs font-bold uppercase">Sync</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
+
         {/* ── Stats Row ── */}
         <View className="flex-row gap-3 mb-6">
           <View className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
             <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">
               {stats.pendingTasksCount}
             </Text>
-            <Text className="text-sm font-semibold text-text-secondary mt-0.5 text-center uppercase tracking-wide">
-              Pending Tasks
+            <Text className="text-xs font-semibold text-text-secondary mt-0.5 text-center uppercase tracking-wide">
+              {t("staff")?.includes("कामगार") ? "लंबित कार्य" : "Pending Tasks"}
             </Text>
           </View>
           <View className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
             <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">
               {stats.pendingExpensesCount}
             </Text>
-            <Text className="text-sm font-semibold text-text-secondary mt-0.5 text-center uppercase tracking-wide">
-              Expenses Pending
+            <Text className="text-xs font-semibold text-text-secondary mt-0.5 text-center uppercase tracking-wide">
+              {t("expenses")?.includes("खर्चे") ? "लंबित खर्चे" : "Expenses Pending"}
             </Text>
           </View>
           <View className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
@@ -265,15 +318,15 @@ export default function HomeScreen() {
                 ? `${(stats.thisMonthExpenseTotal / 1000).toFixed(1)}k`
                 : stats.thisMonthExpenseTotal.toFixed(0)}
             </Text>
-            <Text className="text-sm font-semibold text-text-secondary mt-0.5 text-center uppercase tracking-wide">
-              This Month
+            <Text className="text-xs font-semibold text-text-secondary mt-0.5 text-center uppercase tracking-wide">
+              {t("staff")?.includes("कामगार") ? "इस महीने" : "This Month"}
             </Text>
           </View>
         </View>
 
         {/* ── Quick Actions ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          Quick Actions
+          {t("staff")?.includes("कामगार") ? "त्वरित विकल्प" : "Quick Actions"}
         </Text>
         <View className="flex-row flex-wrap gap-3 mb-6">
           {QUICK_ACTIONS.map((action) => (
@@ -285,7 +338,10 @@ export default function HomeScreen() {
             >
               <MaterialCommunityIcons name={action.icon} size={36} color="#0F7A5F" style={{ marginBottom: 8 }} />
               <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark text-center">
-                {action.label}
+                {action.id === "attendance" && (t("staff")?.includes("कामगार") ? "हाजिरी (Check In)" : "Check In")}
+                {action.id === "expenses" && (t("expenses")?.includes("खर्चे") ? "खर्च दर्ज करें" : "Log Expense")}
+                {action.id === "tasks" && (t("staff")?.includes("कामगार") ? "मेरे कार्य (Tasks)" : "My Tasks")}
+                {action.id === "walkie-talkie" && (t("staff")?.includes("कामगार") ? "वॉयस (Voice)" : "Voice")}
               </Text>
             </Pressable>
           ))}
@@ -293,14 +349,16 @@ export default function HomeScreen() {
 
         {/* ── Recent Activity ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          Recent Activity
+          {t("staff")?.includes("कामगार") ? "हालिया गतिविधि" : "Recent Activity"}
         </Text>
 
         {recentActivity.length === 0 ? (
           <View className="bg-surface dark:bg-surface-dark rounded-2xl p-8 border border-gray-100 dark:border-zinc-800 items-center">
             <MaterialCommunityIcons name="clipboard-text-outline" size={30} color="#9E9E9E" style={{ marginBottom: 8 }} />
             <Text className="text-text-secondary font-semibold text-base text-center">
-              No recent activity yet.{"\n"}Start by checking in or logging an expense.
+              {t("staff")?.includes("कामगार")
+                ? "कोई हालिया गतिविधि नहीं है।\nशुरुआत करने के लिए चेक-इन करें।"
+                : "No recent activity yet.\nStart by checking in or logging an expense."}
             </Text>
           </View>
         ) : (
@@ -315,7 +373,9 @@ export default function HomeScreen() {
                 </View>
                 <View className="flex-1 mr-2">
                   <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark">
-                    {item.label}
+                    {item.type === "expense" && (t("expenses")?.includes("खर्चे") ? "खर्च दर्ज" : item.label)}
+                    {item.type === "attendance" && (t("staff")?.includes("कामगार") ? "हाजिरी (Attendance)" : item.label)}
+                    {item.type === "task" && (t("staff")?.includes("कामगार") ? "कार्य (Task)" : item.label)}
                   </Text>
                   <Text className="text-sm text-text-secondary mt-0.5" numberOfLines={1}>
                     {item.sublabel || item.date}
@@ -334,7 +394,21 @@ export default function HomeScreen() {
                       }`}
                     >
                       <Text className="text-sm font-bold uppercase tracking-wider">
-                        {item.status}
+                        {(() => {
+                          if (!t("staff")?.includes("कामगार")) return item.status;
+                          const hiMap: Record<string, string> = {
+                            submitted: "दर्ज",
+                            pending: "लंबित",
+                            approved: "स्वीकृत",
+                            reimbursed: "भुगतान हुआ",
+                            rejected: "खारिज",
+                            present: "उपस्थित",
+                            absent: "अनुपस्थित",
+                            in_progress: "जारी",
+                            done: "पूर्ण",
+                          };
+                          return hiMap[item.status] ?? item.status;
+                        })()}
                       </Text>
                     </View>
                   )}

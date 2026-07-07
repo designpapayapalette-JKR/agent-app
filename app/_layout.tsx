@@ -17,7 +17,7 @@ import "../src/lib/location-tracker";
 import React, { useEffect, useRef } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, View, AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colorScheme } from "nativewind";
 import type * as LocationTypes from "expo-location";
@@ -28,6 +28,8 @@ import {
   stopTracking,
   isTracking,
 } from "../src/lib/location-tracker";
+import { TerminologyProvider } from "../src/lib/terminology-context";
+import { syncQueuedData } from "../src/lib/offlineQueue";
 
 // Light-theme only, same as shopkeeper-app — overrides NativeWind's "media"
 // (system) mode so the UI doesn't break on devices with system dark mode on.
@@ -38,6 +40,20 @@ function NavigationGuard() {
   const segments = useSegments();
   const router = useRouter();
   const prevAuthenticated = useRef<boolean | null>(null);
+  const appState = useRef(AppState.currentState);
+
+  // Sync offline queued attendance/expenses when returning online
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    syncQueuedData().catch(() => {});
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === "active") {
+        syncQueuedData().catch(() => {});
+      }
+      appState.current = nextState;
+    });
+    return () => subscription.remove();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -117,10 +133,12 @@ function NavigationGuard() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="auto" />
-        <NavigationGuard />
-      </AuthProvider>
+      <TerminologyProvider>
+        <AuthProvider>
+          <StatusBar style="auto" />
+          <NavigationGuard />
+        </AuthProvider>
+      </TerminologyProvider>
     </SafeAreaProvider>
   );
 }

@@ -16,6 +16,8 @@ import * as ImagePicker from "expo-image-picker";
 import { api, ApiError, uploadDocument } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
 import { useBottomInset } from "../../src/lib/useBottomInset";
+import { useTerminology } from "../../src/lib/terminology-context";
+import { queueExpense } from "../../src/lib/offlineQueue";
 
 interface ExpenseRecord {
   id: string;
@@ -29,6 +31,7 @@ interface ExpenseRecord {
 
 export default function ExpensesScreen() {
   const { user } = useAuth();
+  const { t } = useTerminology();
   const topInset = useTopInset();
   const bottomInset = useBottomInset();
 
@@ -122,12 +125,40 @@ export default function ExpensesScreen() {
         notes: notes,
         attachment: attachmentUrl ?? undefined,
       });
-      Alert.alert("Success", "Expense logged successfully and pending manager review.");
+      Alert.alert(t("expenses")?.includes("खर्चे") ? "सफलता" : "Success", t("expenses")?.includes("खर्चे") ? "खर्च सफलतापूर्वक दर्ज कर दिया गया है!" : "Expense logged successfully and pending manager review.");
       setIsModalOpen(false);
       resetExpenseForm();
       fetchExpenses();
-    } catch (e) {
-      Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to log expense.");
+    } catch (e: any) {
+      if (e?.message?.includes("Network request failed") || !e?.status) {
+        await queueExpense({
+          category,
+          amount: parseFloat(amount),
+          notes,
+          dateStr: new Date().toISOString(),
+        });
+        Alert.alert(
+          t("expenses")?.includes("खर्चे") ? "ऑफ़लाइन मोड" : "Offline Mode",
+          t("expenses")?.includes("खर्चे")
+            ? "नेटवर्क कनेक्शन नहीं है। आपका खर्च ऑफ़लाइन सहेज लिया गया है और इंटरनेट वापस आने पर सिंक हो जाएगा!"
+            : "Network request failed. Your expense has been saved offline and will sync automatically when your connection returns!"
+        );
+        setIsModalOpen(false);
+        resetExpenseForm();
+        setExpenses((prev) => [
+          {
+            id: "offline-expense-" + Date.now(),
+            amount: amount,
+            category,
+            date: new Date().toISOString(),
+            notes: notes + " (Offline Cached)",
+            status: "submitted",
+          },
+          ...prev,
+        ]);
+      } else {
+        Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to log expense.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -137,19 +168,23 @@ export default function ExpensesScreen() {
     <View className="flex-1 bg-background dark:bg-background-dark px-6" style={{ paddingTop: topInset }}>
       {/* Title */}
       <View className="flex-row justify-between items-center mb-6">
-        <View>
+        <View className="flex-1 mr-2">
           <Text className="text-2xl font-bold text-text-primary dark:text-text-primary-dark">
-            Expense Claims
+            {t("expenses")}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5 font-medium">
-            Log mileage, fuel, food, and accommodation claims
+            {t("expenses")?.includes("खर्चे")
+              ? "ईंधन, यात्रा, भोजन और आवास दावों का रिकॉर्ड"
+              : "Log mileage, fuel, food, and accommodation claims"}
           </Text>
         </View>
         <Pressable
           onPress={() => setIsModalOpen(true)}
           className="bg-primary dark:bg-primary-dark px-5 py-3.5 rounded-xl active:opacity-90 shadow-sm"
         >
-          <Text className="text-white font-bold text-base">+ Claim</Text>
+          <Text className="text-white font-bold text-base">
+            {t("expenses")?.includes("खर्चे") ? "+ खर्च" : "+ Claim"}
+          </Text>
         </Pressable>
       </View>
 
@@ -160,7 +195,9 @@ export default function ExpensesScreen() {
         </View>
       ) : expenses.length === 0 ? (
         <View className="flex-1 justify-center items-center py-20">
-          <Text className="text-text-secondary font-bold text-base text-center">No expense claims logged</Text>
+          <Text className="text-text-secondary font-bold text-base text-center">
+            {t("expenses")?.includes("खर्चे") ? "कोई दावा दर्ज नहीं किया गया है" : "No expense claims logged"}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -177,10 +214,19 @@ export default function ExpensesScreen() {
                 <View className="flex-row justify-between items-start">
                   <View className="flex-1 mr-2">
                     <Text className="font-bold text-base text-text-primary dark:text-text-primary-dark capitalize">
-                      {item.category} Claim
+                      {(() => {
+                        if (!t("expenses")?.includes("खर्चे")) return item.category + " Claim";
+                        const catHi: Record<string, string> = {
+                          travel: "यात्रा खर्च",
+                          fuel: "ईंधन खर्च",
+                          food: "भोजन खर्च",
+                          other: "अन्य खर्च",
+                        };
+                        return catHi[item.category] ?? item.category + " खर्च";
+                      })()}
                     </Text>
                     <Text className="text-sm text-text-secondary mt-1">
-                      Date: {item.date} | Note: {item.notes || "None"}
+                      {t("expenses")?.includes("खर्चे") ? "तारीख" : "Date"}: {item.date} | {t("expenses")?.includes("खर्चे") ? "विवरण" : "Note"}: {item.notes || "—"}
                     </Text>
                     {item.attachment && (
                       <View className="flex-row items-center mt-1" style={{ gap: 4 }}>
@@ -196,8 +242,17 @@ export default function ExpensesScreen() {
                       ₹{parseFloat(item.amount).toFixed(2)}
                     </Text>
                     <View className={`px-2.5 py-1 rounded-lg mt-1.5 ${statusColor}`}>
-                      <Text className="text-sm font-bold uppercase tracking-wider">
-                        {item.status}
+                      <Text className="text-xs font-bold uppercase tracking-wider">
+                        {(() => {
+                          if (!t("expenses")?.includes("खर्चे")) return item.status;
+                          const statHi: Record<string, string> = {
+                            submitted: "दर्ज",
+                            approved: "स्वीकृत",
+                            rejected: "खारिज",
+                            reimbursed: "भुगतान हुआ",
+                          };
+                          return statHi[item.status] ?? item.status;
+                        })()}
                       </Text>
                     </View>
                   </View>
@@ -213,7 +268,7 @@ export default function ExpensesScreen() {
         <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pb-10" style={{ paddingTop: topInset }}>
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-2xl font-bold text-text-primary dark:text-text-primary-dark">
-              Log Expense Claim
+              {t("expenses")?.includes("खर्चे") ? "नया खर्च दर्ज करें" : "Log Expense Claim"}
             </Text>
             <Pressable onPress={closeExpenseModal} className="w-11 h-11 items-center justify-center">
               <MaterialCommunityIcons name="close" size={20} color="#6B7280" />
@@ -224,9 +279,9 @@ export default function ExpensesScreen() {
             {/* Category Select */}
             <View>
               <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                Category *
+                {t("expenses")?.includes("खर्चे") ? "श्रेणी (Category) *" : "Category *"}
               </Text>
-              <ScrollView horizontal className="flex-row">
+              <ScrollView horizontal className="flex-row" showsHorizontalScrollIndicator={false}>
                 {["travel", "fuel", "food", "other"].map((cat) => (
                   <Pressable
                     key={cat}
@@ -242,7 +297,16 @@ export default function ExpensesScreen() {
                         category === cat ? "text-white" : "text-text-primary dark:text-text-primary-dark"
                       }`}
                     >
-                      {cat}
+                      {(() => {
+                        if (!t("expenses")?.includes("खर्चे")) return cat;
+                        const catHi: Record<string, string> = {
+                          travel: "यात्रा",
+                          fuel: "ईंधन",
+                          food: "भोजन",
+                          other: "अन्य",
+                        };
+                        return catHi[cat] ?? cat;
+                      })()}
                     </Text>
                   </Pressable>
                 ))}
@@ -252,7 +316,7 @@ export default function ExpensesScreen() {
             {/* Amount */}
             <View className="mt-4">
               <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                Amount (INR) *
+                {t("expenses")?.includes("खर्चे") ? "कुल राशि (Amount) *" : "Amount (INR) *"}
               </Text>
               <TextInput
                 value={amount}
@@ -266,12 +330,12 @@ export default function ExpensesScreen() {
             {/* Notes */}
             <View className="mt-4">
               <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                Notes / Explanation
+                {t("expenses")?.includes("खर्चे") ? "खर्च का विवरण (Notes)" : "Notes / Explanation"}
               </Text>
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Fuel refilling, lunch invoice, client visit"
+                placeholder={t("expenses")?.includes("खर्चे") ? "ईंधन भरवाया, दोपहर का भोजन, आदि" : "Fuel refilling, lunch invoice, client visit"}
                 className="bg-surface dark:bg-zinc-900 text-text-primary dark:text-text-primary-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-4 text-base font-medium"
               />
             </View>
@@ -279,7 +343,7 @@ export default function ExpensesScreen() {
             {/* Slip upload simulation */}
             <View className="mt-4">
               <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                Receipt Slip Upload
+                {t("expenses")?.includes("खर्चे") ? "रसीद अपलोड (Receipt Scan)" : "Receipt Slip Upload"}
               </Text>
               <Pressable
                 onPress={handleAttachReceipt}
@@ -287,21 +351,25 @@ export default function ExpensesScreen() {
                 className="border-2 border-dashed border-gray-300 dark:border-zinc-800 p-6 rounded-2xl items-center bg-surface dark:bg-zinc-900 active:opacity-90"
               >
                 <Text className="text-base font-bold text-primary mb-1">
-                  {attachedFileName ? "Change Slip" : "+ Capture Receipt"}
+                  {attachedFileName
+                    ? (t("expenses")?.includes("खर्चे") ? "रसीद बदलें" : "Change Slip")
+                    : (t("expenses")?.includes("खर्चे") ? "+ रसीद फोटो लें" : "+ Capture Receipt")}
                 </Text>
                 <Text className="text-sm text-text-secondary mt-0.5">
-                  {attachedFileName || "Take a photo of the receipt"}
+                  {attachedFileName || (t("expenses")?.includes("खर्चे") ? "रसीद/बिल की फोटो खींचें" : "Take a photo of the receipt")}
                 </Text>
               </Pressable>
             </View>
           </View>
 
-          <View className="flex-row justify-between mt-10" style={{ marginBottom: bottomInset }}>
+          <View className="flex-row justify-between mt-10" style={{ marginBottom: bottomInset + 20 }}>
             <Pressable
               onPress={closeExpenseModal}
               className="border border-gray-200 dark:border-zinc-800 py-4 px-6 rounded-xl w-[48%] items-center"
             >
-              <Text className="text-text-secondary dark:text-text-secondary-dark font-bold text-base">Cancel</Text>
+              <Text className="text-text-secondary dark:text-text-secondary-dark font-bold text-base">
+                {t("expenses")?.includes("खर्चे") ? "रद्द करें" : "Cancel"}
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleLogExpense}
@@ -311,7 +379,9 @@ export default function ExpensesScreen() {
               {submitting ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-white font-bold text-base">Submit Claim</Text>
+                <Text className="text-white font-bold text-base">
+                  {t("expenses")?.includes("खर्चे") ? "दावा भेजें" : "Submit Claim"}
+                </Text>
               )}
             </Pressable>
           </View>

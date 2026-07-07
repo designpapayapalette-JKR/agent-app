@@ -10,20 +10,53 @@
     "backgroundColor": "#FAF9F6",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.papayapalette.agent"
+      "bundleIdentifier": "com.papayapalette.agent",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app collects location data in the background to coordinate field deliveries, track route progression, and verify attendance check-ins even when the app is closed or not in use.",
+        "NSLocationWhenInUseUsageDescription": "This app uses location data to verify attendance check-ins and log dispatch coordinates.",
+        "NSLocationAlwaysUsageDescription": "This app collects location data to coordinate deliveries and field operations.",
+        "NSCameraUsageDescription": "This app requires camera access to scan barcode tags and capture receipt slips for expense logging.",
+        "NSMicrophoneUsageDescription": "This app requires microphone access to stream live voice audio on the walkie-talkie channel.",
+        "NSBluetoothAlwaysUsageDescription": "This app requires Bluetooth access to connect to thermal ticket printers.",
+        "UIBackgroundModes": ["location"]
+      }
     },
     "android": {
       "package": "com.papayapalette.agent",
       "usesCleartextTraffic": true,
       "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_CALL_LOG"
       ]
     },
     "plugins": [
       "expo-router",
       "expo-dev-client",
       "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Employee App to access your location to track delivery progress and verify duty check-ins."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Employee App to access the camera to photograph receipts and document papers."
+        }
+      ],
       "@config-plugins/react-native-webrtc",
       [
         "expo-build-properties",

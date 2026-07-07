@@ -12,6 +12,8 @@ import { useAuth } from "../../src/lib/auth-context";
 import { api, ApiError } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
 import { getCurrentPosition } from "../../src/lib/location-tracker";
+import { useTerminology } from "../../src/lib/terminology-context";
+import { queueAttendance } from "../../src/lib/offlineQueue";
 
 interface AttendanceRecord {
   id: string;
@@ -29,6 +31,7 @@ const WORK_LOCATIONS = [
 
 export default function AttendanceScreen() {
   const { user } = useAuth();
+  const { t } = useTerminology();
   const topInset = useTopInset();
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
@@ -66,9 +69,7 @@ export default function AttendanceScreen() {
     if (!user?.company_id || !user?.id) return;
     setSubmitting(true);
     try {
-      // GPS is only meaningful for field work — a shop/warehouse check-in
-      // still records the location if available, but doesn't require it.
-      const position = await getCurrentPosition();
+      const position = await getCurrentPosition().catch(() => null);
       const locationLabel = WORK_LOCATIONS.find((l) => l.key === workLocation)?.label ?? "At Shop";
       const res = await api.post<{ data: AttendanceRecord }>("/attendance/check-in", {
         notes: `Checked in — ${locationLabel}`,
@@ -77,11 +78,39 @@ export default function AttendanceScreen() {
         latitude: position?.coords.latitude,
         longitude: position?.coords.longitude,
       });
-      Alert.alert("Success", "Attendance checked in successfully for today!");
+      Alert.alert(t("staff")?.includes("कामगार") ? "सफलता" : "Success", t("staff")?.includes("कामगार") ? "हाजिरी सफलतापूर्वक लग गई है!" : "Attendance checked in successfully for today!");
       setIsCheckedIn(true);
       setTodayRecord(res.data);
-    } catch (e) {
-      Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to check in attendance.");
+    } catch (e: any) {
+      if (e?.message?.includes("Network request failed") || !e?.status) {
+        // Queue it offline
+        const position = await getCurrentPosition().catch(() => null);
+        const locationLabel = WORK_LOCATIONS.find((l) => l.key === workLocation)?.label ?? "At Shop";
+        await queueAttendance({
+          notes: `Checked in — ${locationLabel}`,
+          isRemote: workLocation === "field",
+          workLocation,
+          latitude: position?.coords.latitude,
+          longitude: position?.coords.longitude,
+          dateStr: new Date().toISOString(),
+        });
+        Alert.alert(
+          t("staff")?.includes("कामगार") ? "ऑफ़लाइन मोड" : "Offline Mode",
+          t("staff")?.includes("कामगार")
+            ? "नेटवर्क कनेक्शन नहीं है। आपकी हाजिरी ऑफ़लाइन सहेज ली गई है और इंटरनेट वापस आने पर सिंक हो जाएगी!"
+            : "Network request failed. Your check-in has been saved offline and will sync automatically when your connection returns!"
+        );
+        setIsCheckedIn(true);
+        setTodayRecord({
+          id: "offline-checkin-" + Date.now(),
+          date: new Date().toISOString(),
+          status: "present",
+          notes: `Checked in — ${locationLabel} (Offline Cached)`,
+          work_location: workLocation,
+        });
+      } else {
+        Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to check in attendance.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -92,20 +121,22 @@ export default function AttendanceScreen() {
       {/* Title */}
       <View className="mb-8">
         <Text className="text-2xl font-bold text-text-primary dark:text-text-primary-dark">
-          Remote Attendance
+          {t("attendance")}
         </Text>
         <Text className="text-sm text-text-secondary dark:text-text-secondary-dark font-medium mt-0.5">
-          Verify and check-in daily duty attendance records
+          {t("staff")?.includes("कामगार")
+            ? "दैनिक ड्यूटी हाजिरी की पुष्टि और चेक-इन करें"
+            : "Verify and check-in daily duty attendance records"}
         </Text>
       </View>
 
       {/* Date Card */}
       <View className="bg-surface dark:bg-surface-dark p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm mb-6 text-center items-center">
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-wider">
-          Today's Date
+          {t("staff")?.includes("कामगार") ? "आज की तारीख" : "Today's Date"}
         </Text>
         <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark mt-2">
-          {new Date().toLocaleDateString(undefined, {
+          {new Date().toLocaleDateString(t("staff")?.includes("कामगार") ? "hi-IN" : "en-IN", {
             weekday: "long",
             year: "numeric",
             month: "long",
@@ -125,14 +156,16 @@ export default function AttendanceScreen() {
             <MaterialCommunityIcons name="check" size={22} color="#FFFFFF" />
           </View>
           <Text className="text-lg font-bold text-green-800 dark:text-green-400">
-            Checked In Present
+            {t("staff")?.includes("कामगार") ? "उपस्थित (चेक-इन दर्ज)" : "Checked In Present"}
           </Text>
           <Text className="text-base text-green-600 dark:text-green-500 mt-1 font-medium text-center">
-            Duty status is registered for today.{"\n"}Thank you and have a productive day!
+            {t("staff")?.includes("कामगार")
+              ? "आज का ड्यूटी स्टेटस दर्ज हो चुका है।\nधन्यवाद और आपका दिन शुभ हो!"
+              : "Duty status is registered for today.\nThank you and have a productive day!"}
           </Text>
           {todayRecord?.notes && (
             <Text className="text-sm text-green-700 dark:text-green-500 mt-4 italic font-semibold">
-              Note: {todayRecord.notes}
+              {t("staff")?.includes("कामगार") ? "नोट: " : "Note: "} {todayRecord.notes}
             </Text>
           )}
         </View>
@@ -142,14 +175,16 @@ export default function AttendanceScreen() {
             <MaterialCommunityIcons name="close" size={22} color="#EF4444" />
           </View>
           <Text className="text-lg font-bold text-text-primary dark:text-text-primary-dark">
-            Not Checked In
+            {t("staff")?.includes("कामगार") ? "चेक-इन नहीं है" : "Not Checked In"}
           </Text>
           <Text className="text-base text-text-secondary mt-1 font-medium text-center mb-6">
-            You have not recorded attendance check-in for today yet.
+            {t("staff")?.includes("कामगार")
+              ? "आपने आज के लिए अभी तक अपनी उपस्थिति दर्ज नहीं की है।"
+              : "You have not recorded attendance check-in for today yet."}
           </Text>
 
           <Text className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-3 self-start">
-            Where are you working today?
+            {t("staff")?.includes("कामगार") ? "आज आप कहाँ काम कर रहे हैं?" : "Where are you working today?"}
           </Text>
           <View className="w-full flex-row mb-6" style={{ gap: 8 }}>
             {WORK_LOCATIONS.map((loc) => (
@@ -172,7 +207,9 @@ export default function AttendanceScreen() {
                     workLocation === loc.key ? "text-white" : "text-text-secondary"
                   }`}
                 >
-                  {loc.label}
+                  {t("staff")?.includes("कामगार")
+                    ? (loc.key === "shop" ? "दुकान" : loc.key === "field" ? "फील्ड" : "गोदाम")
+                    : loc.label}
                 </Text>
               </Pressable>
             ))}
@@ -187,7 +224,7 @@ export default function AttendanceScreen() {
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-white font-bold text-lg uppercase tracking-wider">
-                Log Check-In
+                {t("staff")?.includes("कामगार") ? "उपस्थिति दर्ज करें" : "Log Check-In"}
               </Text>
             )}
           </Pressable>

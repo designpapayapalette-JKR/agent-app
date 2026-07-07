@@ -9,23 +9,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type * as LocationTypes from "expo-location";
 import { startTracking } from "../../src/lib/location-tracker";
 import { useAuth } from "../../src/lib/auth-context";
-import { safeRequireExpoLocation } from "../../src/lib/isExpoGo";
+import { isExpoGo } from "../../src/lib/isExpoGo";
 import { useTopInset } from "../../src/lib/useTopInset";
+import { requestAppPermissions } from "../../src/lib/permissions";
 
-/**
- * One-time location permission consent screen.
- *
- * Shown by the root _layout.tsx when:
- *   - The user is authenticated, AND
- *   - Background location permission has not yet been granted.
- *
- * After the user grants permission (or skips), navigation moves to the
- * main tab home screen and this screen is never shown again (the root
- * layout checks the permission status on each app launch).
- */
 export default function LocationPermissionScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -33,48 +22,43 @@ export default function LocationPermissionScreen() {
   const [requesting, setRequesting] = useState(false);
 
   const handleGrant = async () => {
-    const Location = safeRequireExpoLocation();
-    if (!Location) {
+    if (isExpoGo) {
       Alert.alert(
-        "Not Available in Expo Go",
-        "Background location tracking needs the full app build. Tap Skip for now — the rest of the app still works.",
-        [{ text: "OK" }]
+        "Expo Go Limited Access",
+        "Sensors, WiFi scanning, and background tracking require a native client build. Skips for now — other pages still work.",
+        [{ text: "Skip", onPress: () => router.replace("/(tabs)") }]
       );
       return;
     }
 
     setRequesting(true);
     try {
-      const { status: fgStatus } =
-        await Location.requestForegroundPermissionsAsync();
+      // Trigger dynamic permission requests for Location, Camera, Microphone, Bluetooth, Call Logs/Phone State, WiFi state
+      const res = await requestAppPermissions();
 
-      if (fgStatus !== "granted") {
+      if (!res.locationForeground) {
         Alert.alert(
-          "Permission Needed",
-          "Foreground location access is required to mark attendance and coordinate deliveries. Please allow it in your device settings.",
+          "Foreground Location Required",
+          "This app requires foreground location access to verify attendance check-ins and log dispatch coordinates.",
           [{ text: "OK" }]
         );
         setRequesting(false);
         return;
       }
 
-      // Request background permission (iOS will show a second system dialog)
-      await Location.requestBackgroundPermissionsAsync();
-
-      // Start tracking if we have a valid user session
+      // Start tracking background tasks if logged in
       if (user?.id && user?.company_id) {
         await startTracking(user.id, user.company_id);
       }
 
       router.replace("/(tabs)");
     } catch (e) {
-      console.error("Permission request failed:", e);
+      console.error("Permission trigger failed:", e);
       setRequesting(false);
     }
   };
 
   const handleSkip = () => {
-    // User declines — they can still use the app, tracking just won't work
     router.replace("/(tabs)");
   };
 
@@ -88,16 +72,15 @@ export default function LocationPermissionScreen() {
         <View className="items-center mb-8">
           {/* Map pin illustration */}
           <View className="w-32 h-32 rounded-full bg-primary/10 dark:bg-primary-dark/15 justify-center items-center mb-6 border-2 border-primary/20 dark:border-primary-dark/25">
-            <MaterialCommunityIcons name="map-marker" size={56} color="#0F7A5F" />
+            <MaterialCommunityIcons name="shield-check-outline" size={56} color="#0F7A5F" />
           </View>
 
-          <Text className="text-3xl font-black text-text-primary dark:text-text-primary-dark text-center leading-tight mb-3">
-            Enable Location{"\n"}Tracking
+          <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark text-center leading-tight mb-3">
+            Device Sensors &{"\n"}Location Consent
           </Text>
 
           <Text className="text-sm text-text-secondary dark:text-text-secondary-dark text-center leading-relaxed">
-            Your manager uses your location to coordinate field operations,
-            assign nearby tasks, and verify remote attendance check-ins.
+            To coordinate delivery operations and calculate accurate mileage, we require access to device positioning sensors.
           </Text>
         </View>
 
@@ -105,24 +88,24 @@ export default function LocationPermissionScreen() {
         <View className="bg-surface dark:bg-surface-dark rounded-3xl p-6 border border-gray-100 dark:border-zinc-800 mb-8 gap-4">
           {[
             {
-              icon: "map" as const,
-              title: "Live coordination",
-              body: "Your manager sees your position on a map to assign nearby tasks.",
+              icon: "map-marker-radius" as const,
+              title: "Location Tracking (GPS & WiFi)",
+              body: "Coordinates active field duties, logs routing progression, and stamps attendance checkpoints.",
             },
             {
-              icon: "clipboard-text" as const,
-              title: "Attendance verification",
-              body: "Remote check-ins are stamped with your GPS location for accuracy.",
+              icon: "phone-in-talk-outline" as const,
+              title: "Cellular Call Logs & Diagnostics",
+              body: "Used on Android to diagnose network cell towers and cell signal telemetry to verify accuracy when GPS is obstructed.",
             },
             {
-              icon: "lock" as const,
-              title: "Only while on duty",
-              body: "Tracking runs while you are logged in. Logging out stops it immediately.",
+              icon: "bluetooth-connect" as const,
+              title: "Bluetooth scans",
+              body: "Connects to nearby corporate attendance hubs and warehouse barcode ticket printers.",
             },
             {
-              icon: "shield-check" as const,
-              title: "Data stays in-house",
-              body: "Pings go to your company's own server — no third-party tracking.",
+              icon: "camera-outline" as const,
+              title: "Camera & Audio sensors",
+              body: "Allows capturing expense invoices, document wallet attachments, and streaming PTT walkie-talkie sound.",
             },
           ].map((item) => (
             <View key={item.title} className="flex-row gap-4 items-start">
@@ -152,7 +135,7 @@ export default function LocationPermissionScreen() {
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-white font-black text-sm uppercase tracking-widest">
-                Grant Location Access
+                Accept and Continue
               </Text>
             )}
           </Pressable>
@@ -168,8 +151,7 @@ export default function LocationPermissionScreen() {
           </Pressable>
 
           <Text className="text-center text-text-secondary text-[10px] leading-relaxed px-4">
-            You can change this at any time in your device's{" "}
-            Settings → Apps → Employee App → Permissions.
+            You can revoke these permissions at any time in device system settings. We value your privacy.
           </Text>
         </View>
       </View>

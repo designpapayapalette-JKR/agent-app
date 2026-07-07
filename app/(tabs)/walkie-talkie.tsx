@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "../../src/lib/auth-context";
 import { useTopInset } from "../../src/lib/useTopInset";
 import { WalkieChannel, WalkiePeer } from "../../src/lib/walkieRtc";
+import { useTerminology } from "../../src/lib/terminology-context";
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error";
 
@@ -23,16 +24,27 @@ interface Channel {
   participantCount?: number;
 }
 
-// A single unified channel for the whole company — the shopkeeper, staff,
-// and field agents all land in the same room (there used to be a second
-// "Field Ops" channel, which actually split the team instead of connecting
-// it, defeating the point of a shared walkie-talkie).
-const TEAM_CHANNEL: Channel = {
-  id: "company-main",
-  name: "Team Channel",
-  description: "Everyone in your company — shopkeeper, staff & you",
-  icon: "radio-tower",
-};
+// Multi-channel list syncing with the web tracking map channels
+const CHANNELS: Channel[] = [
+  {
+    id: "company-main",
+    name: "General Channel",
+    description: "Everyone in your company — shopkeeper, staff & you",
+    icon: "radio-tower",
+  },
+  {
+    id: "company-logistics",
+    name: "Logistics & Dispatch",
+    description: "Delivery updates, vehicle status & routes routing",
+    icon: "truck-delivery",
+  },
+  {
+    id: "company-sales",
+    name: "Sales Operations",
+    description: "Client calls, order intakes & cashier counter syncs",
+    icon: "briefcase",
+  },
+];
 
 const CONNECTION_META: Record<ConnectionState, { label: string; color: string; dotColor: string }> = {
   disconnected: { label: "Disconnected", color: "text-text-secondary", dotColor: "bg-gray-400" },
@@ -52,6 +64,7 @@ function getInitials(name: string) {
 
 export default function WalkieTalkieScreen() {
   const { user } = useAuth();
+  const { t } = useTerminology();
   const topInset = useTopInset();
 
   const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
@@ -155,9 +168,11 @@ export default function WalkieTalkieScreen() {
     >
       {/* ── Header ── */}
       <View className="px-6 pb-6" style={{ paddingTop: topInset }}>
-        <Text className="text-white text-2xl font-black">Walkie-Talkie</Text>
+        <Text className="text-white text-2xl font-black">
+          {t("staff")?.includes("कामगार") ? "वॉकी-टॉकी (Voice)" : "Walkie-Talkie"}
+        </Text>
         <Text className="text-white/50 text-sm font-medium mt-0.5">
-          Push-to-talk voice channels
+          {t("staff")?.includes("कामगार") ? "बातचीत के लिए वॉयस चैनल चुनें" : "Push-to-talk voice channels"}
         </Text>
       </View>
 
@@ -165,26 +180,41 @@ export default function WalkieTalkieScreen() {
       <View className="mx-6 mb-5 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 flex-row items-center">
         <View className={`w-2 h-2 rounded-full mr-2.5 ${connMeta.dotColor}`} />
         <Text className={`text-sm font-bold flex-1 ${connMeta.color}`}>
-          {connMeta.label}
-          {activeChannel ? `  ·  ${activeChannel.name}` : ""}
+          {(() => {
+            if (!t("staff")?.includes("कामगार")) return connMeta.label;
+            const stateHi: Record<string, string> = {
+              disconnected: "डिसकनेक्टेड",
+              connecting: "कनेक्ट हो रहा है…",
+              connected: "कनेक्टेड",
+              error: "कनेक्शन त्रुटि",
+            };
+            return stateHi[connectionState] ?? connMeta.label;
+          })()}
+          {activeChannel ? `  ·  ${
+            t("staff")?.includes("कामगार")
+              ? (activeChannel.id === "company-main" ? "मुख्य टीम" : activeChannel.id === "company-logistics" ? "लॉजिस्टिक्स" : "बिक्री")
+              : activeChannel.name
+          }` : ""}
         </Text>
         {connectionState === "connected" && (
           <Pressable
             onPress={handleLeaveChannel}
             className="bg-red-500/20 border border-red-500/30 px-4 py-2.5 rounded-xl active:opacity-80"
           >
-            <Text className="text-red-400 text-sm font-bold">Leave</Text>
+            <Text className="text-red-400 text-sm font-bold">
+              {t("staff")?.includes("कामगार") ? "छोड़ें" : "Leave"}
+            </Text>
           </Pressable>
         )}
       </View>
 
-      {/* ── Team Channel ── */}
-      <View className="px-6 mb-6">
-        {(() => {
-          const ch = TEAM_CHANNEL;
+      {/* ── Channels List ── */}
+      <View className="px-6 mb-6" style={{ gap: 10 }}>
+        {CHANNELS.map((ch) => {
           const isActive = activeChannel?.id === ch.id;
           return (
             <Pressable
+              key={ch.id}
               onPress={() => {
                 if (isActive) {
                   handleLeaveChannel();
@@ -192,7 +222,7 @@ export default function WalkieTalkieScreen() {
                   handleJoinChannel(ch);
                 }
               }}
-              disabled={connectionState === "connecting"}
+              disabled={connectionState === "connecting" && !isActive}
               className={`rounded-2xl p-4 border flex-row items-center ${
                 isActive
                   ? "bg-green-500/10 border-green-500/30"
@@ -216,38 +246,54 @@ export default function WalkieTalkieScreen() {
                     isActive ? "text-green-400" : "text-white"
                   }`}
                 >
-                  {ch.name}
+                  {(() => {
+                    if (!t("staff")?.includes("कामगार")) return ch.name;
+                    const hiNames: Record<string, string> = {
+                      "company-main": "मुख्य टीम चैनल",
+                      "company-logistics": "लॉजिस्टिक्स और डिलीवरी",
+                      "company-sales": "बिक्री और ऑपरेशन्स",
+                    };
+                    return hiNames[ch.id] ?? ch.name;
+                  })()}
                 </Text>
                 <Text className="text-white/40 text-sm mt-0.5">
-                  {ch.description}
+                  {(() => {
+                    if (!t("staff")?.includes("कामगार")) return ch.description;
+                    const hiDescs: Record<string, string> = {
+                      "company-main": "कंपनी के सभी सदस्य — दुकानदार, स्टाफ और आप",
+                      "company-logistics": "डिलीवरी अपडेट, वाहन स्थिति और रूट प्लान",
+                      "company-sales": "ग्राहक कॉल्स, नए ऑर्डर और बिलिंग काउंटर सिंक",
+                    };
+                    return hiDescs[ch.id] ?? ch.description;
+                  })()}
                 </Text>
               </View>
               {isActive && connectionState === "connecting" ? (
-                <View className="bg-amber-400/20 px-2 py-1 rounded-lg">
-                  <Text className="text-amber-400 text-sm font-bold">
-                    Joining…
+                <View className="bg-amber-400/20 px-2.5 py-1.5 rounded-xl">
+                  <Text className="text-amber-400 text-xs font-bold">
+                    {t("staff")?.includes("कामगार") ? "कनेक्ट हो रहा है…" : "Joining…"}
                   </Text>
                 </View>
               ) : isActive ? (
-                <View className="bg-green-500/20 px-2 py-1 rounded-lg">
-                  <Text className="text-green-400 text-sm font-bold">
-                    ● LIVE
+                <View className="bg-green-500/20 px-2.5 py-1.5 rounded-xl">
+                  <Text className="text-green-400 text-xs font-bold">
+                    ● {t("staff")?.includes("कामगार") ? "लाइव" : "LIVE"}
                   </Text>
                 </View>
               ) : (
                 <Text className="text-white/30 text-sm font-semibold">
-                  Join →
+                  {t("staff")?.includes("कामगार") ? "जुड़ें →" : "Join →"}
                 </Text>
               )}
             </Pressable>
           );
-        })()}
+        })}
       </View>
 
       {/* ── PTT Big Button ── */}
       <View className="px-6 items-center mb-8">
         <Text className="text-white/40 text-sm font-bold uppercase tracking-widest mb-5">
-          Push to Talk
+          {t("staff")?.includes("कामगार") ? "बोलने के लिए दबाएं" : "Push to Talk"}
         </Text>
 
         {/* Glow ring */}
@@ -289,10 +335,10 @@ export default function WalkieTalkieScreen() {
               }`}
             >
               {isTransmitting
-                ? "TRANSMITTING"
+                ? (t("staff")?.includes("कामगार") ? "बोल रहे हैं…" : "TRANSMITTING")
                 : connectionState === "connected"
-                ? "HOLD TO TALK"
-                : "JOIN A CHANNEL"}
+                ? (t("staff")?.includes("कामगार") ? "दबाकर बोलें" : "HOLD TO TALK")
+                : (t("staff")?.includes("कामगार") ? "चैनल चुनें" : "JOIN A CHANNEL")}
             </Text>
           </Pressable>
         </Animated.View>
@@ -322,7 +368,9 @@ export default function WalkieTalkieScreen() {
                 isMuted ? "text-red-400" : "text-white/60"
               }`}
             >
-              {isMuted ? "Microphone Muted" : "Mic Active"}
+              {isMuted
+                ? (t("staff")?.includes("कामगार") ? "माइक म्यूट है" : "Microphone Muted")
+                : (t("staff")?.includes("कामगार") ? "माइक सक्रिय" : "Mic Active")}
             </Text>
           </Pressable>
         )}
@@ -332,7 +380,7 @@ export default function WalkieTalkieScreen() {
       {connectionState === "connected" && (
         <View className="px-6 mb-8">
           <Text className="text-white/40 text-sm font-bold uppercase tracking-widest mb-3">
-            In This Channel
+            {t("staff")?.includes("कामगार") ? "इस चैनल के सदस्य" : "In This Channel"}
           </Text>
           <View className="bg-white/5 border border-white/10 rounded-2xl p-4 gap-3">
             {/* Self */}
@@ -346,7 +394,7 @@ export default function WalkieTalkieScreen() {
                 <Text className="text-white font-bold text-sm">
                   {user?.first_name} {user?.last_name}{" "}
                   <Text className="text-green-400 text-sm font-bold">
-                    (You)
+                    {t("staff")?.includes("कामगार") ? "(आप)" : "(You)"}
                   </Text>
                 </Text>
               </View>
@@ -371,7 +419,9 @@ export default function WalkieTalkieScreen() {
             ))}
             {participants.length === 0 && (
               <Text className="text-white/30 text-sm">
-                No one else has joined this channel yet.
+                {t("staff")?.includes("कामगार")
+                  ? "इस चैनल में अभी कोई और नहीं जुड़ा है।"
+                  : "No one else has joined this channel yet."}
               </Text>
             )}
           </View>

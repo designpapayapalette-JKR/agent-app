@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../../src/lib/auth-context";
 import { api } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
+import { useTerminology } from "../../src/lib/terminology-context";
 
 const APP_VERSION = "1.0.0-alpha";
 
@@ -44,6 +45,7 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function ProfileScreen() {
   const { user, activeCompany, logout } = useAuth();
+  const { mode, lang, setMode, setLang, t } = useTerminology();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const topInset = useTopInset();
@@ -102,12 +104,12 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out of the Employee App?",
+      t("staff")?.includes("कामगार") ? "लॉग आउट" : "Sign Out",
+      t("staff")?.includes("कामगार") ? "क्या आप वाकई एम्प्लोयी ऐप से साइन आउट करना चाहते हैं?" : "Are you sure you want to sign out of the Employee App?",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("staff")?.includes("कामगार") ? "रद्द करें" : "Cancel", style: "cancel" },
         {
-          text: "Sign Out",
+          text: t("staff")?.includes("कामगार") ? "लॉग आउट" : "Sign Out",
           style: "destructive",
           onPress: async () => {
             setLoggingOut(true);
@@ -173,7 +175,7 @@ export default function ProfileScreen() {
       <View className="px-6 pt-6 pb-12">
         {/* ── This Month Stats ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          This Month's Activity
+          {t("staff")?.includes("कामगार") ? "इस महीने की गतिविधियां" : "This Month's Activity"}
         </Text>
 
         {loadingStats ? (
@@ -188,8 +190,8 @@ export default function ProfileScreen() {
                 <Text className="text-2xl font-black text-primary dark:text-primary-dark">
                   {stats.daysPresent}
                 </Text>
-                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wide text-center mt-0.5">
-                  Days Present
+                <Text className="text-[11px] text-text-secondary font-bold uppercase tracking-wide text-center mt-0.5">
+                  {t("staff")?.includes("कामगार") ? "कुल हाजिरी" : "Days Present"}
                 </Text>
               </View>
               {/* Tasks Done */}
@@ -197,8 +199,8 @@ export default function ProfileScreen() {
                 <Text className="text-2xl font-black text-primary dark:text-primary-dark">
                   {stats.tasksCompleted}
                 </Text>
-                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wide text-center mt-0.5">
-                  Tasks Done
+                <Text className="text-[11px] text-text-secondary font-bold uppercase tracking-wide text-center mt-0.5">
+                  {t("staff")?.includes("कामगार") ? "कार्य पूर्ण" : "Tasks Done"}
                 </Text>
               </View>
               {/* Expenses */}
@@ -206,8 +208,8 @@ export default function ProfileScreen() {
                 <Text className="text-2xl font-black text-primary dark:text-primary-dark">
                   {stats.expensesSubmitted}
                 </Text>
-                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wide text-center mt-0.5">
-                  Expenses Filed
+                <Text className="text-[11px] text-text-secondary font-bold uppercase tracking-wide text-center mt-0.5">
+                  {t("expenses")?.includes("खर्चे") ? "कुल खर्चे" : "Expenses Filed"}
                 </Text>
               </View>
             </View>
@@ -216,7 +218,7 @@ export default function ProfileScreen() {
             {stats.expensesTotal > 0 && (
               <View className="border-t border-gray-100 dark:border-zinc-800 px-4 py-3 flex-row items-center justify-between">
                 <Text className="text-sm text-text-secondary font-semibold">
-                  Total expense amount claimed
+                  {t("expenses")?.includes("खर्चे") ? "दावा की गई कुल राशि" : "Total expense amount claimed"}
                 </Text>
                 <Text className="text-sm font-black text-text-primary dark:text-text-primary-dark">
                   ₹{stats.expensesTotal.toFixed(2)}
@@ -228,14 +230,14 @@ export default function ProfileScreen() {
 
         {/* ── Account Info ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          Account
+          {t("staff")?.includes("कामगार") ? "खाता जानकारी" : "Account"}
         </Text>
         <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
           {[
-            { label: "Full Name", value: `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—" },
-            { label: "Email", value: user?.email ?? "—" },
-            { label: "Role", value: capitalize(user?.role ?? "—") },
-            { label: "Company", value: activeCompany?.name ?? "—" },
+            { label: t("staff")?.includes("कामगार") ? "पूरा नाम" : "Full Name", value: `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—" },
+            { label: t("staff")?.includes("कामगार") ? "ईमेल" : "Email", value: user?.email ?? "—" },
+            { label: t("staff")?.includes("कामगार") ? "पद (Role)" : "Role", value: capitalize(user?.role ?? "—") },
+            { label: t("staff")?.includes("कामगार") ? "कंपनी" : "Company", value: activeCompany?.name ?? "—" },
           ].map((row, idx, arr) => (
             <View
               key={row.label}
@@ -257,7 +259,7 @@ export default function ProfileScreen() {
 
         {/* ── My Records ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          My Records
+          {t("staff")?.includes("कामगार") ? "मेरे रिकॉर्ड्स" : "My Records"}
         </Text>
         <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
           <Pressable
@@ -266,7 +268,9 @@ export default function ProfileScreen() {
           >
             <View className="flex-row items-center" style={{ gap: 10 }}>
               <MaterialCommunityIcons name="cash-multiple" size={18} color="#0F7A5F" />
-              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">My Salary</Text>
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                {t("payroll")}
+              </Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={18} color="#9E9E9E" />
           </Pressable>
@@ -276,21 +280,67 @@ export default function ProfileScreen() {
           >
             <View className="flex-row items-center" style={{ gap: 10 }}>
               <MaterialCommunityIcons name="card-account-details-outline" size={18} color="#0F7A5F" />
-              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">My Documents & ID Cards</Text>
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                {t("scannedDocs")}
+              </Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={18} color="#9E9E9E" />
           </Pressable>
         </View>
 
+        {/* ── Settings / Terminology ── */}
+        <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+          {t("staff")?.includes("कामगार") ? "सेटिंग्स और भाषा" : "Settings & Terminology"}
+        </Text>
+        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
+          {/* Terminology Mode Selection */}
+          <View className="px-4 py-3.5 flex-row items-center justify-between border-b border-gray-100 dark:border-zinc-800">
+            <View>
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                {t("staff")?.includes("कामगार") ? "पारंपरिक शब्दावली" : "Traditional Terminology"}
+              </Text>
+              <Text className="text-xs text-text-secondary mt-0.5">
+                {t("staff")?.includes("कामगार") ? "देशी व्यापार शब्दावली चालू करें" : "Use Indian merchant accounting terms"}
+              </Text>
+            </View>
+            <Switch
+              value={mode === "traditional"}
+              onValueChange={(val) => setMode(val ? "traditional" : "modern")}
+              trackColor={{ false: "#E0E0E0", true: "#A7F3D0" }}
+              thumbColor={mode === "traditional" ? "#0F7A5F" : "#F4F4F4"}
+            />
+          </View>
+
+          {/* Language Selection (only if traditional is active) */}
+          {mode === "traditional" && (
+            <View className="px-4 py-3.5 flex-row items-center justify-between">
+              <View>
+                <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                  {t("staff")?.includes("कामगार") ? "हिंदी भाषा" : "Hindi Language"}
+                </Text>
+                <Text className="text-xs text-text-secondary mt-0.5">
+                  {t("staff")?.includes("कामगार") ? "हिंदी अनुवाद सक्रिय करें" : "Translate screens to Hindi"}
+                </Text>
+              </View>
+              <Switch
+                value={lang === "hi"}
+                onValueChange={(val) => setLang(val ? "hi" : "en")}
+                trackColor={{ false: "#E0E0E0", true: "#A7F3D0" }}
+                thumbColor={lang === "hi" ? "#0F7A5F" : "#F4F4F4"}
+              />
+            </View>
+          )}
+        </View>
+
         {/* ── App Info ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          App Info
+          {t("staff")?.includes("कामगार") ? "ऐप जानकारी" : "App Info"}
         </Text>
         <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
           {[
-            { label: "App Version", value: APP_VERSION },
-            { label: "Platform", value: "React Native (Expo)" },
-            { label: "Color Scheme", value: capitalize(colorScheme ?? "system") },
+            { label: t("staff")?.includes("कामगार") ? "ऐप संस्करण" : "App Version", value: APP_VERSION },
+            { label: t("staff")?.includes("कामगार") ? "प्लेटफॉर्म" : "Platform", value: "React Native (Expo)" },
+            { label: t("staff")?.includes("कामगार") ? "थीम मोड" : "Color Scheme", value: capitalize(colorScheme ?? "system") },
           ].map((row, idx, arr) => (
             <View
               key={row.label}
@@ -322,7 +372,7 @@ export default function ProfileScreen() {
             <>
               <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
               <Text className="text-red-600 dark:text-red-400 font-bold text-lg">
-                Sign Out
+                {t("staff")?.includes("कामगार") ? "लॉग आउट करें" : "Sign Out"}
               </Text>
             </>
           )}

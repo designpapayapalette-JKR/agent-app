@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTerminology } from "../../src/lib/terminology-context";
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -27,6 +28,7 @@ export default function TabsLayout() {
   // footprint, which put the tab bar behind the system nav buttons/gesture
   // bar on devices with a taller bottom inset (3-button nav, some OEM skins).
   const insets = useSafeAreaInsets();
+  const { t } = useTerminology();
 
   return (
     <Tabs
@@ -56,7 +58,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("dashboard"),
           tabBarIcon: ({ focused }) => (
             <TabIcon active="home" inactive="home-outline" focused={focused} />
           ),
@@ -65,7 +67,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="attendance"
         options={{
-          title: "Attendance",
+          title: t("attendance").split(" ")[0],
           tabBarIcon: ({ focused }) => (
             <TabIcon active="map-marker-check" inactive="map-marker-check-outline" focused={focused} />
           ),
@@ -74,7 +76,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="tasks"
         options={{
-          title: "Tasks",
+          title: t("staff")?.includes("कामगार") ? "कार्य" : "Tasks",
           tabBarIcon: ({ focused }) => (
             <TabIcon active="checkbox-marked-circle" inactive="checkbox-marked-circle-outline" focused={focused} />
           ),
@@ -83,7 +85,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="walkie-talkie"
         options={{
-          title: "Voice",
+          title: t("staff")?.includes("कामगार") ? "वॉयस" : "Voice",
           tabBarIcon: ({ focused }) => (
             <TabIcon active="radio-handheld" inactive="radio-handheld" focused={focused} />
           ),
@@ -92,7 +94,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="expenses"
         options={{
-          title: "Expenses",
+          title: t("expenses").split(" ")[0],
           tabBarIcon: ({ focused }) => (
             <TabIcon active="receipt" inactive="receipt" focused={focused} />
           ),
@@ -101,7 +103,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("staff")?.includes("कामगार") ? "प्रोफ़ाइल" : "Profile",
           tabBarIcon: ({ focused }) => (
             <TabIcon active="account-circle" inactive="account-circle-outline" focused={focused} />
           ),
@@ -115,8 +117,8 @@ export default function TabsLayout() {
           title: "Location Permission",
         }}
       />
-      <Tabs.Screen name="salary" options={{ href: null, title: "My Salary" }} />
-      <Tabs.Screen name="documents" options={{ href: null, title: "My Documents" }} />
+      <Tabs.Screen name="salary" options={{ href: null, title: t("payroll").split(" ")[0] }} />
+      <Tabs.Screen name="documents" options={{ href: null, title: t("scannedDocs") }} />
     </Tabs>
   );
 }
