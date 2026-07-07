@@ -12,7 +12,8 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "../../src/lib/auth-context";
-import { api, ApiError } from "../../src/lib/api";
+import * as ImagePicker from "expo-image-picker";
+import { api, ApiError, uploadDocument } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
 import { useBottomInset } from "../../src/lib/useBottomInset";
 
@@ -42,7 +43,8 @@ export default function ExpensesScreen() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [attachedFileName, setAttachedFileName] = useState("");
-  const [mockFileId, setMockFileId] = useState<string | null>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const fetchExpenses = async () => {
     if (!user?.id) return;
@@ -61,30 +63,46 @@ export default function ExpensesScreen() {
     fetchExpenses();
   }, [user]);
 
+  const resetExpenseForm = () => {
+    setAmount("");
+    setNotes("");
+    setCategory("travel");
+    setAttachedFileName("");
+    setAttachmentUrl(null);
+  };
+
   const closeExpenseModal = () => {
     const hasChanges = amount.trim() !== "" || notes.trim() !== "" || attachedFileName !== "";
     if (hasChanges) {
       Alert.alert("Discard changes?", "You have unsaved changes. Are you sure you want to go back?", [
         { text: "Keep Editing", style: "cancel" },
-        { text: "Discard", style: "destructive", onPress: () => setIsModalOpen(false) },
+        { text: "Discard", style: "destructive", onPress: () => { resetExpenseForm(); setIsModalOpen(false); } },
       ]);
       return;
     }
     setIsModalOpen(false);
   };
 
-  const handleSimulateAttachment = async () => {
+  const handleAttachReceipt = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission Needed", "Camera access is required to photograph a receipt.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: true });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setUploadingAttachment(true);
     setAttachedFileName("receipt_slip.jpg (Uploading...)");
-    // Simulate uploading a mock file to Directus
     try {
-      // In a real device, we'd use expo-image-picker and formData
-      // Here we create a mock file record or simulate upload return
-      const mockId = "0f443818-ba2e-4361-9c60-c3d38708c3b2"; // Placeholder file ID
-      setMockFileId(mockId);
+      const url = await uploadDocument(result.assets[0].uri, "expense");
+      setAttachmentUrl(url);
       setAttachedFileName("receipt_slip.jpg (Attached)");
-      Alert.alert("Slip Uploaded", "Mock receipt slip uploaded to storage bucket.");
     } catch (err) {
       setAttachedFileName("");
+      Alert.alert("Upload Failed", err instanceof ApiError ? err.message : "Could not upload the receipt.");
+    } finally {
+      setUploadingAttachment(false);
     }
   };
 
@@ -102,18 +120,11 @@ export default function ExpensesScreen() {
         category: category,
         date: new Date().toISOString(),
         notes: notes,
-        attachment: mockFileId ?? undefined,
+        attachment: attachmentUrl ?? undefined,
       });
       Alert.alert("Success", "Expense logged successfully and pending manager review.");
       setIsModalOpen(false);
-
-      // Reset
-      setAmount("");
-      setNotes("");
-      setCategory("travel");
-      setAttachedFileName("");
-      setMockFileId(null);
-
+      resetExpenseForm();
       fetchExpenses();
     } catch (e) {
       Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to log expense.");
@@ -271,14 +282,15 @@ export default function ExpensesScreen() {
                 Receipt Slip Upload
               </Text>
               <Pressable
-                onPress={handleSimulateAttachment}
+                onPress={handleAttachReceipt}
+                disabled={uploadingAttachment}
                 className="border-2 border-dashed border-gray-300 dark:border-zinc-800 p-6 rounded-2xl items-center bg-surface dark:bg-zinc-900 active:opacity-90"
               >
                 <Text className="text-base font-bold text-primary mb-1">
-                  {attachedFileName ? "Change Slip" : "+ Capture / Attach Receipt"}
+                  {attachedFileName ? "Change Slip" : "+ Capture Receipt"}
                 </Text>
                 <Text className="text-sm text-text-secondary mt-0.5">
-                  {attachedFileName || "Accepts JPG or PNG image files"}
+                  {attachedFileName || "Take a photo of the receipt"}
                 </Text>
               </Pressable>
             </View>
