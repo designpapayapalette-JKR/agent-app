@@ -23,22 +23,16 @@ interface Channel {
   participantCount?: number;
 }
 
-const CHANNELS: Channel[] = [
-  {
-    id: "company-main",
-    name: "Company Channel",
-    description: "Main team communication",
-    icon: "radio-tower",
-    participantCount: 0,
-  },
-  {
-    id: "field-ops",
-    name: "Field Ops",
-    description: "Field agents & delivery team",
-    icon: "truck-delivery",
-    participantCount: 0,
-  },
-];
+// A single unified channel for the whole company — the shopkeeper, staff,
+// and field agents all land in the same room (there used to be a second
+// "Field Ops" channel, which actually split the team instead of connecting
+// it, defeating the point of a shared walkie-talkie).
+const TEAM_CHANNEL: Channel = {
+  id: "company-main",
+  name: "Team Channel",
+  description: "Everyone in your company — shopkeeper, staff & you",
+  icon: "radio-tower",
+};
 
 const CONNECTION_META: Record<ConnectionState, { label: string; color: string; dotColor: string }> = {
   disconnected: { label: "Disconnected", color: "text-text-secondary", dotColor: "bg-gray-400" },
@@ -184,78 +178,70 @@ export default function WalkieTalkieScreen() {
         )}
       </View>
 
-      {/* ── Channel List ── */}
+      {/* ── Team Channel ── */}
       <View className="px-6 mb-6">
-        <Text className="text-white/40 text-sm font-bold uppercase tracking-widest mb-3">
-          Channels
-        </Text>
-        <View className="gap-3">
-          {CHANNELS.map((ch) => {
-            const isActive = activeChannel?.id === ch.id;
-            return (
-              <Pressable
-                key={ch.id}
-                onPress={() => {
-                  if (isActive) {
-                    handleLeaveChannel();
-                  } else {
-                    handleJoinChannel(ch);
-                  }
-                }}
-                disabled={
-                  connectionState === "connecting" ||
-                  (!!activeChannel && !isActive)
+        {(() => {
+          const ch = TEAM_CHANNEL;
+          const isActive = activeChannel?.id === ch.id;
+          return (
+            <Pressable
+              onPress={() => {
+                if (isActive) {
+                  handleLeaveChannel();
+                } else {
+                  handleJoinChannel(ch);
                 }
-                className={`rounded-2xl p-4 border flex-row items-center ${
-                  isActive
-                    ? "bg-green-500/10 border-green-500/30"
-                    : "bg-white/5 border-white/10"
-                } active:opacity-80`}
+              }}
+              disabled={connectionState === "connecting"}
+              className={`rounded-2xl p-4 border flex-row items-center ${
+                isActive
+                  ? "bg-green-500/10 border-green-500/30"
+                  : "bg-white/5 border-white/10"
+              } active:opacity-80`}
+            >
+              <View
+                className={`w-11 h-11 rounded-2xl justify-center items-center mr-3 ${
+                  isActive ? "bg-green-500/20" : "bg-white/10"
+                }`}
               >
-                <View
-                  className={`w-11 h-11 rounded-2xl justify-center items-center mr-3 ${
-                    isActive ? "bg-green-500/20" : "bg-white/10"
+                <MaterialCommunityIcons
+                  name={ch.icon as any}
+                  size={22}
+                  color={isActive ? "#4ADE80" : "#FFFFFF"}
+                />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className={`font-bold text-base ${
+                    isActive ? "text-green-400" : "text-white"
                   }`}
                 >
-                  <MaterialCommunityIcons
-                    name={ch.icon as any}
-                    size={22}
-                    color={isActive ? "#4ADE80" : "#FFFFFF"}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text
-                    className={`font-bold text-base ${
-                      isActive ? "text-green-400" : "text-white"
-                    }`}
-                  >
-                    {ch.name}
-                  </Text>
-                  <Text className="text-white/40 text-sm mt-0.5">
-                    {ch.description}
+                  {ch.name}
+                </Text>
+                <Text className="text-white/40 text-sm mt-0.5">
+                  {ch.description}
+                </Text>
+              </View>
+              {isActive && connectionState === "connecting" ? (
+                <View className="bg-amber-400/20 px-2 py-1 rounded-lg">
+                  <Text className="text-amber-400 text-sm font-bold">
+                    Joining…
                   </Text>
                 </View>
-                {isActive && connectionState === "connecting" ? (
-                  <View className="bg-amber-400/20 px-2 py-1 rounded-lg">
-                    <Text className="text-amber-400 text-sm font-bold">
-                      Joining…
-                    </Text>
-                  </View>
-                ) : isActive ? (
-                  <View className="bg-green-500/20 px-2 py-1 rounded-lg">
-                    <Text className="text-green-400 text-sm font-bold">
-                      ● LIVE
-                    </Text>
-                  </View>
-                ) : (
-                  <Text className="text-white/30 text-sm font-semibold">
-                    Join →
+              ) : isActive ? (
+                <View className="bg-green-500/20 px-2 py-1 rounded-lg">
+                  <Text className="text-green-400 text-sm font-bold">
+                    ● LIVE
                   </Text>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
+                </View>
+              ) : (
+                <Text className="text-white/30 text-sm font-semibold">
+                  Join →
+                </Text>
+              )}
+            </Pressable>
+          );
+        })()}
       </View>
 
       {/* ── PTT Big Button ── */}
