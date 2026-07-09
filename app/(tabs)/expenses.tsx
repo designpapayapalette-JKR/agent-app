@@ -265,7 +265,7 @@ export default function ExpensesScreen() {
 
       {/* Log Claim Modal */}
       <Modal visible={isModalOpen} animationType="slide" onRequestClose={closeExpenseModal}>
-        <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pb-10" style={{ paddingTop: topInset }}>
+        <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pb-10" keyboardShouldPersistTaps="handled" style={{ paddingTop: topInset }}>
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-2xl font-bold text-text-primary dark:text-text-primary-dark">
               {t("expenses")?.includes("खर्चे") ? "नया खर्च दर्ज करें" : "Log Expense Claim"}

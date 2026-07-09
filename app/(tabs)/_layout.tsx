@@ -109,16 +109,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Hidden screen — not a visible tab, shown by navigation guard on first login */}
-      <Tabs.Screen
-        name="location-permission"
-        options={{
-          href: null, // exclude from tab bar
-          title: "Location Permission",
-        }}
-      />
-      <Tabs.Screen name="salary" options={{ href: null, title: t("payroll").split(" ")[0] }} />
-      <Tabs.Screen name="documents" options={{ href: null, title: t("scannedDocs") }} />
     </Tabs>
   );
 }

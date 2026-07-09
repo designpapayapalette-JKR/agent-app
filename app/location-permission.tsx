@@ -9,11 +9,11 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { startTracking } from "../../src/lib/location-tracker";
-import { useAuth } from "../../src/lib/auth-context";
-import { isExpoGo } from "../../src/lib/isExpoGo";
-import { useTopInset } from "../../src/lib/useTopInset";
-import { requestAppPermissions } from "../../src/lib/permissions";
+import { startTracking } from "../src/lib/location-tracker";
+import { useAuth } from "../src/lib/auth-context";
+import { isExpoGo } from "../src/lib/isExpoGo";
+import { useTopInset } from "../src/lib/useTopInset";
+import { requestAppPermissions } from "../src/lib/permissions";
 
 export default function LocationPermissionScreen() {
   const router = useRouter();
@@ -158,3 +158,4 @@ export default function LocationPermissionScreen() {
     </ScrollView>
   );
 }
+

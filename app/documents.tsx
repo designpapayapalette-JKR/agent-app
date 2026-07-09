@@ -4,8 +4,8 @@ import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { File, Directory, Paths } from "expo-file-system";
-import { useAuth } from "../../src/lib/auth-context";
-import { useTopInset } from "../../src/lib/useTopInset";
+import { useAuth } from "../src/lib/auth-context";
+import { useTopInset } from "../src/lib/useTopInset";
 
 interface StoredDocument {
   filename: string;
@@ -173,3 +173,4 @@ export default function DocumentsScreen() {
     </View>
   );
 }
+

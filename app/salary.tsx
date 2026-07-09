@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, FlatList, ActivityIndicator, Pressable, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { api } from "../../src/lib/api";
-import { useTopInset } from "../../src/lib/useTopInset";
+import { api } from "../src/lib/api";
+import { useTopInset } from "../src/lib/useTopInset";
 
 interface SalaryRecord {
   id: string;
@@ -119,3 +119,4 @@ export default function SalaryScreen() {
     </View>
   );
 }
+

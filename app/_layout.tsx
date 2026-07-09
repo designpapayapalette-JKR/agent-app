@@ -93,10 +93,9 @@ function NavigationGuard() {
           } else {
             // Route to the permission/onboarding screen first
             // Only do this if we're not already on it
-            const onPermissionScreen =
-              inTabsGroup && (segments as string[])[1] === "location-permission";
+            const onPermissionScreen = segments[0] === "location-permission";
             if (!onPermissionScreen) {
-              router.push("/(tabs)/location-permission");
+              router.push("/location-permission");
             }
           }
         } catch {
@@ -142,3 +141,4 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
