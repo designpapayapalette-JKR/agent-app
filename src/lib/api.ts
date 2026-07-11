@@ -1,11 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import { toCamelCase, toSnakeCase } from "./caseConvert";
 
-export const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-
-if (!apiUrl) {
-  throw new Error("EXPO_PUBLIC_API_URL is not set — see .env.example");
-}
+export const apiUrl =
+  process.env.EXPO_PUBLIC_API_URL || "https://api.papayapalette.online";
 
 const AUTH_STORAGE_KEY = "shopkeeper_auth_data";
 

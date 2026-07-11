@@ -33,7 +33,8 @@ import { syncQueuedData } from "../src/lib/offlineQueue";
 
 // Light-theme only, same as shopkeeper-app — overrides NativeWind's "media"
 // (system) mode so the UI doesn't break on devices with system dark mode on.
-colorScheme.set("light");
+// NOTE: wrapped in try/catch to prevent module-evaluation crash if NativeWind
+// init hasn't completed (see RootLayout useEffect below).
 
 function NavigationGuard() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -130,6 +131,10 @@ function NavigationGuard() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    try { colorScheme.set("light"); } catch {}
+  }, []);
+
   return (
     <SafeAreaProvider>
       <TerminologyProvider>
