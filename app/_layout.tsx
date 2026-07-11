@@ -134,7 +134,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <TerminologyProvider>
         <AuthProvider>
-          <StatusBar style="auto" />
+          <StatusBar style="dark" />
           <NavigationGuard />
         </AuthProvider>
       </TerminologyProvider>

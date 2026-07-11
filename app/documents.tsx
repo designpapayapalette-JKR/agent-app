@@ -106,7 +106,7 @@ export default function DocumentsScreen() {
         className="bg-surface dark:bg-surface-dark border-b border-gray-100 dark:border-zinc-800 flex-row items-center px-6 pb-3"
         style={{ gap: 12, paddingTop: topInset }}
       >
-        <Pressable onPress={() => router.back()} className="w-touch-target h-touch-target items-center justify-center -ml-2">
+        <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center -ml-2">
           <MaterialCommunityIcons name="arrow-left" size={22} color="#0F7A5F" />
         </Pressable>
         <Text className="text-xl font-bold text-text-primary dark:text-text-primary-dark">My Documents</Text>

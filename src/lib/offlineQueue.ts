@@ -67,10 +67,11 @@ export async function syncQueuedData(): Promise<void> {
         workLocation: att.workLocation,
         latitude: att.latitude,
         longitude: att.longitude,
+        date: att.dateStr,
       });
     } catch (e: any) {
-      if (e?.message?.includes("Network request failed") || !e?.status) {
-        remainingAtts.push(att); // keep in queue if network failure
+      if (e?.message?.includes("Network request failed") || e?.status === undefined) {
+        remainingAtts.push(att);
       }
     }
   }
@@ -87,7 +88,7 @@ export async function syncQueuedData(): Promise<void> {
         date: exp.dateStr,
       });
     } catch (e: any) {
-      if (e?.message?.includes("Network request failed") || !e?.status) {
+      if (e?.message?.includes("Network request failed") || e?.status === undefined) {
         remainingExps.push(exp);
       }
     }

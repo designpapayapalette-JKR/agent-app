@@ -170,7 +170,7 @@ export default function AttendanceScreen() {
           )}
         </View>
       ) : (
-        <View className="bg-surface dark:bg-surface-dark border border-gray-150 dark:border-zinc-850 p-6 rounded-3xl shadow-lg items-center">
+        <View className="bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-700 p-6 rounded-3xl shadow-lg items-center">
           <View className="w-12 h-12 bg-red-100 dark:bg-red-950/30 rounded-full justify-center items-center mb-4">
             <MaterialCommunityIcons name="close" size={22} color="#EF4444" />
           </View>
