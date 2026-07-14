@@ -163,7 +163,6 @@ export async function startTracking(
     });
 
     _isTracking = true;
-    console.log("[LocationTracker] Started background location tracking.");
     return { success: true };
   } catch (e) {
     console.error("[LocationTracker] Failed to start tracking:", e);
@@ -189,7 +188,6 @@ export async function stopTracking(): Promise<void> {
 
     if (isStarted) {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("[LocationTracker] Stopped background location tracking.");
     }
   } catch (e) {
     console.error("[LocationTracker] Failed to stop tracking:", e);

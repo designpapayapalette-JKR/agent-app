@@ -35,11 +35,10 @@ interface RecentActivity {
   date: string;
 }
 
-const QUICK_ACTIONS: { id: string; label: string; icon: MCIName; route: "/attendance" | "/expenses" | "/tasks" | "/walkie-talkie" }[] = [
+const QUICK_ACTIONS: { id: string; label: string; icon: MCIName; route: "/attendance" | "/expenses" | "/tasks" }[] = [
   { id: "attendance", label: "Check In", icon: "map-marker", route: "/attendance" },
   { id: "expenses", label: "Log Expense", icon: "receipt", route: "/expenses" },
   { id: "tasks", label: "My Tasks", icon: "check-circle", route: "/tasks" },
-  { id: "walkie-talkie", label: "Voice", icon: "radio-handheld", route: "/walkie-talkie" },
 ];
 
 function getGreeting() {
@@ -334,14 +333,13 @@ export default function HomeScreen() {
               key={action.id}
               onPress={() => router.push(action.route)}
               className="bg-surface dark:bg-surface-dark border border-gray-100 dark:border-zinc-800 rounded-2xl p-5 items-center shadow-sm active:opacity-80"
-              style={{ width: "47%" }}
+              style={{ width: "30%" }}
             >
               <MaterialCommunityIcons name={action.icon} size={36} color="#0F7A5F" style={{ marginBottom: 8 }} />
               <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark text-center">
                 {action.id === "attendance" && (t("staff")?.includes("कामगार") ? "हाजिरी (Check In)" : "Check In")}
                 {action.id === "expenses" && (t("expenses")?.includes("खर्चे") ? "खर्च दर्ज करें" : "Log Expense")}
                 {action.id === "tasks" && (t("staff")?.includes("कामगार") ? "मेरे कार्य (Tasks)" : "My Tasks")}
-                {action.id === "walkie-talkie" && (t("staff")?.includes("कामगार") ? "वॉयस (Voice)" : "Voice")}
               </Text>
             </Pressable>
           ))}

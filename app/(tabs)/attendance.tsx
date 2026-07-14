@@ -20,7 +20,7 @@ interface AttendanceRecord {
   date: string;
   status: string;
   notes: string;
-  work_location?: "shop" | "field" | "warehouse";
+  workLocation?: "shop" | "field" | "warehouse";
 }
 
 const WORK_LOCATIONS = [
@@ -106,11 +106,28 @@ export default function AttendanceScreen() {
           date: new Date().toISOString(),
           status: "present",
           notes: `Checked in — ${locationLabel} (Offline Cached)`,
-          work_location: workLocation,
+          workLocation,
         });
       } else {
         Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to check in attendance.");
       }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    setSubmitting(true);
+    try {
+      await api.post("/attendance/check-out");
+      Alert.alert(
+        t("staff")?.includes("कामगार") ? "सफलता" : "Success",
+        t("staff")?.includes("कामगार") ? "चेक-आउट सफलतापूर्वक दर्ज हो गया!" : "Checked out successfully!"
+      );
+      setIsCheckedIn(false);
+      setTodayRecord(null);
+    } catch {
+      Alert.alert("Error", "Failed to check out. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -168,6 +185,22 @@ export default function AttendanceScreen() {
               {t("staff")?.includes("कामगार") ? "नोट: " : "Note: "} {todayRecord.notes}
             </Text>
           )}
+          <Pressable
+            onPress={handleCheckOut}
+            disabled={submitting}
+            className="mt-6 w-full bg-amber-500 py-3.5 rounded-2xl items-center flex-row justify-center"
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="logout" size={18} color="#FFFFFF" />
+                <Text className="text-white font-bold text-base ml-2">
+                  {t("staff")?.includes("कामगार") ? "चेक-आउट" : "Check Out"}
+                </Text>
+              </>
+            )}
+          </Pressable>
         </View>
       ) : (
         <View className="bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-700 p-6 rounded-3xl shadow-lg items-center">

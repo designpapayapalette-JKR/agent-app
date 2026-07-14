@@ -29,7 +29,7 @@ async function setAuthData(data: AuthData | null): Promise<void> {
       await SecureStore.setItemAsync(AUTH_STORAGE_KEY, JSON.stringify(data));
     }
   } catch (e) {
-    console.error(e);
+    console.warn("[api] SecureStore write failed — auth tokens not persisted:", e);
   }
 }
 
@@ -43,23 +43,35 @@ export class ApiError extends Error {
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
-  const auth = await getAuthData();
-  if (!auth?.refreshToken) return null;
+let refreshInFlight: Promise<string | null> | null = null;
 
-  const res = await fetch(`${apiUrl}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken: auth.refreshToken }),
-  });
-  if (!res.ok) {
-    await setAuthData(null);
-    return null;
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const auth = await getAuthData();
+    if (!auth?.refreshToken) return null;
+
+    const res = await fetch(`${apiUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: auth.refreshToken }),
+    });
+    if (!res.ok) {
+      await setAuthData(null);
+      return null;
+    }
+    const json = await res.json();
+    const updated: AuthData = { ...auth, accessToken: json.accessToken, expiresAt: json.expiresAt };
+    await setAuthData(updated);
+    return updated.accessToken;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
   }
-  const json = await res.json();
-  const updated: AuthData = { ...auth, accessToken: json.accessToken, expiresAt: json.expiresAt };
-  await setAuthData(updated);
-  return updated.accessToken;
 }
 
 export async function getValidAccessToken(): Promise<string | null> {

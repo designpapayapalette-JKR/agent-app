@@ -25,11 +25,11 @@ interface AgentTask {
   title: string;
   description?: string;
   status: TaskStatus;
-  due_date?: string;
-  party_name?: string;
-  challan_id?: string;
+  dueDate?: string;
+  partyName?: string;
+  challanId?: string;
   notes?: string;
-  date_created?: string;
+  createdAt?: string;
 }
 
 const STATUS_FILTERS: { key: string; label: string }[] = [
@@ -271,7 +271,7 @@ export default function TasksScreen() {
           ItemSeparatorComponent={() => <View className="h-3" />}
           renderItem={({ item }) => {
             const meta = STATUS_META[item.status] ?? STATUS_META.pending;
-            const overdue = isOverdue(item.due_date, item.status);
+            const overdue = isOverdue(item.dueDate, item.status);
             return (
               <Pressable
                 onPress={() => setSelectedTask(item)}
@@ -285,11 +285,11 @@ export default function TasksScreen() {
                     >
                       {item.title}
                     </Text>
-                    {item.party_name && (
+                    {item.partyName && (
                       <View className="flex-row items-center mt-0.5" style={{ gap: 4 }}>
                         <MaterialCommunityIcons name="store" size={13} color="#6B7280" />
                         <Text className="text-sm text-text-secondary">
-                          {item.party_name}
+                          {item.partyName}
                         </Text>
                       </View>
                     )}
@@ -316,7 +316,7 @@ export default function TasksScreen() {
                 {/* Footer row */}
                 <View className="flex-row items-center justify-between mt-3">
                   <View className="flex-row items-center gap-3">
-                    {item.due_date && (
+                    {item.dueDate && (
                       <View className="flex-row items-center gap-1">
                         <MaterialCommunityIcons
                           name={overdue ? "alert-circle" : "calendar"}
@@ -328,12 +328,12 @@ export default function TasksScreen() {
                             overdue ? "text-red-500" : "text-text-secondary"
                           }`}
                         >
-                          Due {formatDate(item.due_date)}
+                          Due {formatDate(item.dueDate)}
                           {overdue ? " (Overdue)" : ""}
                         </Text>
                       </View>
                     )}
-                    {item.challan_id && (
+                    {item.challanId && (
                       <View className="flex-row items-center" style={{ gap: 4 }}>
                         <MaterialCommunityIcons name="truck" size={13} color="#0F7A5F" />
                         <Text className="text-sm text-primary font-semibold">
@@ -416,7 +416,7 @@ export default function TasksScreen() {
 
             {/* Meta fields */}
             <View className="gap-3 mb-6">
-              {selectedTask.party_name && (
+              {selectedTask.partyName && (
                 <View className="flex-row items-center gap-2">
                   <MaterialCommunityIcons name="store" size={18} color="#6B7280" />
                   <View>
@@ -424,12 +424,12 @@ export default function TasksScreen() {
                       Party
                     </Text>
                     <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
-                      {selectedTask.party_name}
+                      {selectedTask.partyName}
                     </Text>
                   </View>
                 </View>
               )}
-              {selectedTask.due_date && (
+              {selectedTask.dueDate && (
                 <View className="flex-row items-center gap-2">
                   <MaterialCommunityIcons name="calendar" size={18} color="#6B7280" />
                   <View>
@@ -439,14 +439,14 @@ export default function TasksScreen() {
                     <View className="flex-row items-center" style={{ gap: 4 }}>
                       <Text
                         className={`text-sm font-bold ${
-                          isOverdue(selectedTask.due_date, selectedTask.status)
+                          isOverdue(selectedTask.dueDate, selectedTask.status)
                             ? "text-red-500"
                             : "text-text-primary dark:text-text-primary-dark"
                         }`}
                       >
-                        {formatDate(selectedTask.due_date)}
+                        {formatDate(selectedTask.dueDate)}
                       </Text>
-                      {isOverdue(selectedTask.due_date, selectedTask.status) && (
+                      {isOverdue(selectedTask.dueDate, selectedTask.status) && (
                         <>
                           <MaterialCommunityIcons name="alert-circle" size={13} color="#EF4444" />
                           <Text className="text-sm font-bold text-red-500">Overdue</Text>
@@ -456,7 +456,7 @@ export default function TasksScreen() {
                   </View>
                 </View>
               )}
-              {selectedTask.challan_id && (
+              {selectedTask.challanId && (
                 <View className="flex-row items-center gap-2">
                   <MaterialCommunityIcons name="truck" size={18} color="#0F7A5F" />
                   <View>
@@ -464,7 +464,7 @@ export default function TasksScreen() {
                       Linked Challan
                     </Text>
                     <Text className="text-sm font-bold text-primary dark:text-primary-dark">
-                      #{selectedTask.challan_id}
+                      #{selectedTask.challanId}
                     </Text>
                   </View>
                 </View>

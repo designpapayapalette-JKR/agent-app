@@ -15,6 +15,7 @@ export interface QueuedExpense {
   amount: number;
   notes?: string;
   dateStr: string;
+  attachment?: string;
 }
 
 const ATT_QUEUE_KEY = "offline_attendance_queue";
@@ -86,6 +87,7 @@ export async function syncQueuedData(): Promise<void> {
         amount: exp.amount,
         notes: exp.notes ? exp.notes + " (Synced Offline)" : "Synced Offline",
         date: exp.dateStr,
+        attachment: exp.attachment,
       });
     } catch (e: any) {
       if (e?.message?.includes("Network request failed") || e?.status === undefined) {

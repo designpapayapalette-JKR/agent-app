@@ -83,15 +83,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="walkie-talkie"
-        options={{
-          title: t("staff")?.includes("कामगार") ? "वॉयस" : "Voice",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon active="radio-handheld" inactive="radio-handheld" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="expenses"
         options={{
           title: t("expenses").split(" ")[0],

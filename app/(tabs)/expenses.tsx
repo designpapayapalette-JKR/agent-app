@@ -136,6 +136,7 @@ export default function ExpensesScreen() {
           amount: parseFloat(amount),
           notes,
           dateStr: new Date().toISOString(),
+          attachment: attachmentUrl ?? undefined,
         });
         Alert.alert(
           t("expenses")?.includes("खर्चे") ? "ऑफ़लाइन मोड" : "Offline Mode",
