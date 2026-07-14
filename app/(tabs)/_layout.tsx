@@ -24,9 +24,6 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
-  // Fixed height/padding here assumed every device has the same gesture-nav
-  // footprint, which put the tab bar behind the system nav buttons/gesture
-  // bar on devices with a taller bottom inset (3-button nav, some OEM skins).
   const insets = useSafeAreaInsets();
   const { t } = useTerminology();
 

@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "../../src/lib/auth-context";
@@ -266,6 +268,7 @@ export default function ExpensesScreen() {
 
       {/* Log Claim Modal */}
       <Modal visible={isModalOpen} animationType="slide" onRequestClose={closeExpenseModal}>
+        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pb-10" keyboardShouldPersistTaps="handled" style={{ paddingTop: topInset }}>
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-2xl font-bold text-text-primary dark:text-text-primary-dark">
@@ -387,6 +390,7 @@ export default function ExpensesScreen() {
             </Pressable>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

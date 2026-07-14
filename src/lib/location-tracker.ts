@@ -156,7 +156,7 @@ export async function startTracking(
       showsBackgroundLocationIndicator: true, // iOS: shows the blue bar
       foregroundService: {
         // Android: keeps the task alive
-        notificationTitle: "Shopkeeper Agent",
+        notificationTitle: "managemycounter Agent",
         notificationBody: "Location tracking is active while on duty.",
         notificationColor: "#0F7A5F",
       },

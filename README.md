@@ -11,11 +11,11 @@ cp .env.example .env     # point EXPO_PUBLIC_API_URL at your shopkeeper-backend 
 npx expo start --dev-client
 ```
 
-**Why a dev client, not Expo Go:** background location tracking and WebRTC (LiveKit walkie-talkie) both need custom native modules — Expo Go can't load them past the prototype stage.
+**Why a dev client, not Expo Go:** background location tracking needs a custom native module — Expo Go can't load it past the prototype stage.
 
 ## Structure
 
-- `app/` — Expo Router routes: `(auth)/login`, `(tabs)/{index,attendance,tasks,walkie-talkie,expenses,profile,location-permission}`
+- `app/` — Expo Router routes: `(auth)/login`, `(tabs)/{index,attendance,tasks,expenses,profile,location-permission}`
 - `src/theme/colors.ts` — same Stitch color tokens as `shopkeeper-app` (duplicated deliberately, not shared-packaged — two independent products)
 - `src/lib/api.ts` — API client for shopkeeper-api, reads `EXPO_PUBLIC_API_URL`
 - `src/components/` — shared UI components

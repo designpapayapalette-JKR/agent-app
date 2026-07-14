@@ -379,7 +379,7 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text className="text-center text-text-secondary text-sm mt-4 font-medium">
-          Shopkeeper ERP · Employee App · v{APP_VERSION}
+          managemycounter · Employee App · v{APP_VERSION}
         </Text>
       </View>
     </ScrollView>

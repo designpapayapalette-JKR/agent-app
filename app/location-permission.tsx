@@ -104,8 +104,8 @@ export default function LocationPermissionScreen() {
             },
             {
               icon: "camera-outline" as const,
-              title: "Camera & Audio sensors",
-              body: "Allows capturing expense invoices, document wallet attachments, and streaming PTT walkie-talkie sound.",
+              title: "Camera sensors",
+              body: "Allows capturing expense invoices and document wallet attachments.",
             },
           ].map((item) => (
             <View key={item.title} className="flex-row gap-4 items-start">

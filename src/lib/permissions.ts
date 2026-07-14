@@ -11,7 +11,6 @@ export async function requestAppPermissions() {
     locationForeground: false,
     locationBackground: false,
     camera: false,
-    microphone: false,
     bluetooth: false,
     phoneAndCallLogs: false,
     wifi: true,
@@ -22,24 +21,20 @@ export async function requestAppPermissions() {
     const cameraStatus = await Camera.requestCameraPermissionsAsync();
     results.camera = cameraStatus.granted;
 
-    // 2. Microphone permission (for WebRTC Walkie-Talkie)
-    const micStatus = await Camera.requestMicrophonePermissionsAsync();
-    results.microphone = micStatus.granted;
-
-    // 3. Foreground Location
+    // 2. Foreground Location
     const Location = safeRequireExpoLocation();
     if (Location) {
       const locationStatus = await Location.requestForegroundPermissionsAsync();
       results.locationForeground = locationStatus.granted;
 
-      // 4. Background Location (Only if foreground is granted)
+      // 3. Background Location (Only if foreground is granted)
       if (locationStatus.granted) {
         const bgLocationStatus = await Location.requestBackgroundPermissionsAsync();
         results.locationBackground = bgLocationStatus.granted;
       }
     }
 
-    // 5. Android-Specific Sensor & Diagnostic Permissions (Bluetooth, WiFi state, Call Logs, Phone State)
+    // 4. Android-Specific Sensor & Diagnostic Permissions (Bluetooth, WiFi state, Call Logs, Phone State)
     if (Platform.OS === "android") {
       const androidVersion = typeof Platform.Version === "string" 
         ? parseInt(Platform.Version, 10) 
