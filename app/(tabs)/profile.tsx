@@ -45,7 +45,7 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function ProfileScreen() {
   const { user, activeCompany, logout } = useAuth();
-  const { mode, lang, setMode, setLang, t } = useTerminology();
+  const { lang, setLang, t } = useTerminology();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const topInset = useTopInset();
@@ -288,48 +288,27 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        {/* ── Settings / Terminology ── */}
+        {/* ── Settings / Language ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
-          {t("staff")?.includes("कामगार") ? "सेटिंग्स और भाषा" : "Settings & Terminology"}
+          {lang === "hi" ? "सेटिंग्स और भाषा" : "Settings & Language"}
         </Text>
         <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
-          {/* Terminology Mode Selection */}
-          <View className="px-4 py-3.5 flex-row items-center justify-between border-b border-gray-100 dark:border-zinc-800">
+          <View className="px-4 py-3.5 flex-row items-center justify-between">
             <View>
               <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
-                {t("staff")?.includes("कामगार") ? "पारंपरिक शब्दावली" : "Traditional Terminology"}
+                {lang === "hi" ? "हिंदी भाषा" : "Hindi Language"}
               </Text>
               <Text className="text-xs text-text-secondary mt-0.5">
-                {t("staff")?.includes("कामगार") ? "देशी व्यापार शब्दावली चालू करें" : "Use Indian merchant accounting terms"}
+                {lang === "hi" ? "हिंदी अनुवाद सक्रिय करें" : "Translate screens to Hindi"}
               </Text>
             </View>
             <Switch
-              value={mode === "traditional"}
-              onValueChange={(val) => setMode(val ? "traditional" : "modern")}
+              value={lang === "hi"}
+              onValueChange={(val) => setLang(val ? "hi" : "en")}
               trackColor={{ false: "#E0E0E0", true: "#A7F3D0" }}
-              thumbColor={mode === "traditional" ? "#0F7A5F" : "#F4F4F4"}
+              thumbColor={lang === "hi" ? "#0F7A5F" : "#F4F4F4"}
             />
           </View>
-
-          {/* Language Selection (only if traditional is active) */}
-          {mode === "traditional" && (
-            <View className="px-4 py-3.5 flex-row items-center justify-between">
-              <View>
-                <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
-                  {t("staff")?.includes("कामगार") ? "हिंदी भाषा" : "Hindi Language"}
-                </Text>
-                <Text className="text-xs text-text-secondary mt-0.5">
-                  {t("staff")?.includes("कामगार") ? "हिंदी अनुवाद सक्रिय करें" : "Translate screens to Hindi"}
-                </Text>
-              </View>
-              <Switch
-                value={lang === "hi"}
-                onValueChange={(val) => setLang(val ? "hi" : "en")}
-                trackColor={{ false: "#E0E0E0", true: "#A7F3D0" }}
-                thumbColor={lang === "hi" ? "#0F7A5F" : "#F4F4F4"}
-              />
-            </View>
-          )}
         </View>
 
         {/* ── App Info ── */}
