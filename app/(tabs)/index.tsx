@@ -66,6 +66,10 @@ export default function HomeScreen() {
     pendingExpensesCount: 0,
     thisMonthExpenseTotal: 0,
   });
+  const [performance, setPerformance] = useState<{ completed: number; outcomes: Record<string, number> }>({
+    completed: 0,
+    outcomes: {},
+  });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,6 +102,14 @@ export default function HomeScreen() {
 
       const tasks = tasksRes.data ?? [];
       const pendingTasks = tasks.filter((t) => t.status === "pending" || t.status === "in_progress").length;
+      const completedThisMonth = tasks.filter((t) =>
+        t.status === "done" && t.completedAt?.startsWith(monthStart.slice(0, 7))
+      );
+      const visitOutcomes = completedThisMonth.reduce((acc: Record<string, number>, t: any) => {
+        const outcome = t.visitOutcome || "unknown";
+        acc[outcome] = (acc[outcome] || 0) + 1;
+        return acc;
+      }, {});
 
       const expenses = expensesRes.data ?? [];
       const monthExpenses = expenses.filter((e) => e.date >= monthStart);
@@ -109,6 +121,10 @@ export default function HomeScreen() {
         pendingTasksCount: pendingTasks,
         pendingExpensesCount: pendingExpenses,
         thisMonthExpenseTotal: monthTotal,
+      });
+      setPerformance({
+        completed: completedThisMonth.length,
+        outcomes: visitOutcomes,
       });
 
       // Recent activity — last 3 expenses + last 2 attendance records
@@ -344,6 +360,33 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* ── My Performance ── */}
+        {performance.completed > 0 && (
+          <>
+            <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+              {t("staff")?.includes("कामगार") ? "मेरा प्रदर्शन (This Month)" : "My Performance This Month"}
+            </Text>
+            <View className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-text-primary font-bold text-base">Tasks Completed</Text>
+                <Text className="text-primary font-black text-xl">{performance.completed}</Text>
+              </View>
+              {Object.keys(performance.outcomes).length > 0 && (
+                <View className="gap-2">
+                  {Object.entries(performance.outcomes).map(([outcome, count]) => (
+                    <View key={outcome} className="flex-row items-center justify-between">
+                      <Text className="text-sm text-text-secondary capitalize">{outcome.replace(/_/g, " ")}</Text>
+                      <View className="bg-primary/10 px-3 py-1 rounded-lg">
+                        <Text className="text-sm font-bold text-primary">{count}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </>
+        )}
 
         {/* ── Recent Activity ── */}
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">

@@ -292,22 +292,29 @@ export default function ProfileScreen() {
         <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
           {lang === "hi" ? "सेटिंग्स और भाषा" : "Settings & Language"}
         </Text>
-        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
-          <View className="px-4 py-3.5 flex-row items-center justify-between">
-            <View>
-              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
-                {lang === "hi" ? "हिंदी भाषा" : "Hindi Language"}
-              </Text>
-              <Text className="text-xs text-text-secondary mt-0.5">
-                {lang === "hi" ? "हिंदी अनुवाद सक्रिय करें" : "Translate screens to Hindi"}
-              </Text>
-            </View>
-            <Switch
-              value={lang === "hi"}
-              onValueChange={(val) => setLang(val ? "hi" : "en")}
-              trackColor={{ false: "#E0E0E0", true: "#A7F3D0" }}
-              thumbColor={lang === "hi" ? "#0F7A5F" : "#F4F4F4"}
-            />
+        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden p-4">
+          <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark mb-3">
+            App Language
+          </Text>
+          <View className="flex-row flex-wrap bg-gray-50 dark:bg-zinc-900 p-1 rounded-xl" style={{ gap: 4 }}>
+            {[
+              { key: "en", label: "English" },
+              { key: "hi", label: "हिंदी" },
+              { key: "ta", label: "தமிழ்" },
+              { key: "ml", label: "മലയാളം" },
+              { key: "kn", label: "ಕನ್ನಡ" },
+              { key: "te", label: "తెలుగు" },
+              { key: "mr", label: "मराठी" },
+              { key: "gu", label: "ગુજરાતી" },
+            ].map((l) => (
+              <Pressable
+                key={l.key}
+                onPress={() => setLang(l.key as any)}
+                className={`py-2 px-3 rounded-lg items-center ${lang === l.key ? "bg-primary shadow-sm" : ""}`}
+              >
+                <Text className={`text-xs font-bold ${lang === l.key ? "text-white" : "text-text-primary"}`}>{l.label}</Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 

@@ -9,12 +9,14 @@ import {
   Alert,
   FlatList,
   RefreshControl,
+  TextInput,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { useAuth } from "../../src/lib/auth-context";
 import { api, ApiError } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
+import * as Location from "expo-location";
 
 type MCIName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -26,11 +28,27 @@ interface AgentTask {
   description?: string;
   status: TaskStatus;
   dueDate?: string;
+  partyId?: string;
   partyName?: string;
+  party?: { id: string; name: string; phone: string | null; address: string | null };
   challanId?: string;
   notes?: string;
+  visitedAt?: string;
+  completedAt?: string;
+  visitOutcome?: string;
+  visitNotes?: string;
   createdAt?: string;
 }
+
+const VISIT_OUTCOMES = [
+  { key: "collected_order", label: "Collected Order", icon: "cart" },
+  { key: "delivered", label: "Delivered", icon: "truck" },
+  { key: "payment_collected", label: "Payment Collected", icon: "cash" },
+  { key: "issue_logged", label: "Issue Logged", icon: "alert" },
+  { key: "no_response", label: "No Response", icon: "account-off" },
+  { key: "rescheduled", label: "Rescheduled", icon: "calendar-refresh" },
+  { key: "completed", label: "Completed (General)", icon: "check-circle" },
+];
 
 const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: "all", label: "All" },
@@ -88,6 +106,13 @@ export default function TasksScreen() {
   const [selectedTask, setSelectedTask] = useState<AgentTask | null>(null);
   const [updating, setUpdating] = useState(false);
 
+  // Visit check-in
+  const [showVisitModal, setShowVisitModal] = useState(false);
+  const [visitTask, setVisitTask] = useState<AgentTask | null>(null);
+  const [selectedOutcome, setSelectedOutcome] = useState<string>("");
+  const [visitNotes, setVisitNotes] = useState("");
+  const [visitSubmitting, setVisitSubmitting] = useState(false);
+
   const fetchTasks = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -95,7 +120,6 @@ export default function TasksScreen() {
       setTasks(res.data ?? []);
     } catch (e) {
       console.error("Failed to fetch tasks:", e);
-      // If collection doesn't exist yet, show empty rather than crash
       setTasks([]);
     } finally {
       setLoading(false);
@@ -113,56 +137,87 @@ export default function TasksScreen() {
   };
 
   const handleAdvanceStatus = async (task: AgentTask) => {
-    const next = NEXT_STATUS[task.status];
-    if (!next) {
-      Alert.alert(
-        "Task Complete",
-        "This task is already marked as done."
-      );
+    if (task.status === "pending") {
+      // Moving to in_progress — just update status
+      setUpdating(true);
+      try {
+        await api.patch(`/agent-tasks/${task.id}`, { status: "in_progress" });
+        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: "in_progress" } : t)));
+        if (selectedTask?.id === task.id) setSelectedTask({ ...task, status: "in_progress" });
+        setSelectedTask(null);
+      } catch (e) {
+        Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to update task");
+      } finally {
+        setUpdating(false);
+      }
       return;
     }
 
-    const labels: Record<TaskStatus, string> = {
-      pending: "mark as In Progress",
-      in_progress: "mark as Done",
-      done: "reopen",
-      cancelled: "reopen",
-    };
+    if (task.status === "in_progress") {
+      // Show visit completion modal
+      setVisitTask(task);
+      setSelectedOutcome("");
+      setVisitNotes("");
+      setShowVisitModal(true);
+    }
+  };
 
-    Alert.alert(
-      "Update Task",
-      `Do you want to ${labels[task.status]}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            setUpdating(true);
-            try {
-              await api.patch(`/agent-tasks/${task.id}`, { status: next });
-              setTasks((prev) =>
-                prev.map((t) =>
-                  t.id === task.id ? { ...t, status: next } : t
-                )
-              );
-              if (selectedTask?.id === task.id) {
-                setSelectedTask({ ...task, status: next });
-              }
-              Alert.alert(
-                "Updated",
-                next === "done"
-                  ? "Task marked as complete! Great work."
-                  : "Task is now In Progress."
-              );
-            } catch (e) {
-              Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to update task.");
-            } finally {
-              setUpdating(false);
-            }
-          },
-        },
-      ]
-    );
+  const handleCheckIn = async (task: AgentTask) => {
+    setUpdating(true);
+    try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        latitude = loc.coords.latitude;
+        longitude = loc.coords.longitude;
+      } catch {}
+
+      await api.post(`/agent-tasks/${task.id}/check-in`, { latitude, longitude });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, visitedAt: new Date().toISOString(), checkInLatitude: latitude, checkInLongitude: longitude } : t))
+      );
+      if (selectedTask?.id === task.id) {
+        setSelectedTask((prev) => prev ? { ...prev, visitedAt: new Date().toISOString() } : prev);
+      }
+      Alert.alert("Checked In", "You've checked in at the customer location.");
+    } catch (e) {
+      Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to check in");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCompleteVisit = async () => {
+    if (!visitTask || !selectedOutcome) {
+      Alert.alert("Required", "Please select a visit outcome.");
+      return;
+    }
+    setVisitSubmitting(true);
+    try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        latitude = loc.coords.latitude;
+        longitude = loc.coords.longitude;
+      } catch {}
+
+      await api.post(`/agent-tasks/${visitTask.id}/complete-visit`, {
+        outcome: selectedOutcome,
+        notes: visitNotes.trim() || undefined,
+        latitude,
+        longitude,
+      });
+      setShowVisitModal(false);
+      setSelectedTask(null);
+      fetchTasks();
+      Alert.alert("Visit Complete", "Task marked as done with visit outcome recorded.");
+    } catch (e) {
+      Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to complete visit");
+    } finally {
+      setVisitSubmitting(false);
+    }
   };
 
   const filteredTasks = tasks.filter((t) => {
@@ -177,19 +232,90 @@ export default function TasksScreen() {
     done: tasks.filter((t) => t.status === "done").length,
   };
 
+  const renderTaskCard = (item: AgentTask) => {
+    const meta = STATUS_META[item.status] ?? STATUS_META.pending;
+    const overdue = isOverdue(item.dueDate, item.status);
+    return (
+      <Pressable
+        onPress={() => setSelectedTask(item)}
+        className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm active:opacity-90"
+      >
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <Text className="font-bold text-base text-text-primary dark:text-text-primary-dark" numberOfLines={1}>
+              {item.title}
+            </Text>
+            {(item.party?.name || item.partyName) && (
+              <View className="flex-row items-center mt-0.5" style={{ gap: 4 }}>
+                <MaterialCommunityIcons name="store" size={13} color="#6B7280" />
+                <Text className="text-sm text-text-secondary">{item.party?.name ?? item.partyName}</Text>
+              </View>
+            )}
+            {item.description ? (
+              <Text className="text-sm text-text-secondary mt-1" numberOfLines={2}>{item.description}</Text>
+            ) : null}
+          </View>
+          <View className={`px-2.5 py-1.5 rounded-xl flex-row items-center ${meta.bg}`} style={{ gap: 4 }}>
+            <MaterialCommunityIcons name={meta.icon} size={13} color={ICON_COLOR_BY_STATUS[item.status]} />
+            <Text className={`text-sm font-bold ${meta.text}`}>{meta.label}</Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between mt-3">
+          <View className="flex-row items-center gap-3">
+            {item.dueDate && (
+              <View className="flex-row items-center gap-1">
+                <MaterialCommunityIcons name={overdue ? "alert-circle" : "calendar"} size={13} color={overdue ? "#EF4444" : "#6B7280"} />
+                <Text className={`text-sm font-semibold ${overdue ? "text-red-500" : "text-text-secondary"}`}>
+                  Due {formatDate(item.dueDate)}{overdue ? " (Overdue)" : ""}
+                </Text>
+              </View>
+            )}
+            {item.visitedAt && (
+              <View className="flex-row items-center gap-1">
+                <MaterialCommunityIcons name="map-marker-check" size={13} color="#0F7A5F" />
+                <Text className="text-sm text-primary font-semibold">Visited</Text>
+              </View>
+            )}
+          </View>
+          <View className="flex-row gap-2">
+            {item.status === "in_progress" && !item.visitedAt && (
+              <Pressable
+                onPress={() => handleCheckIn(item)}
+                disabled={updating}
+                className="bg-amber-500 px-3 py-2 rounded-xl active:opacity-90"
+              >
+                <MaterialCommunityIcons name="map-marker" size={14} color="white" />
+              </Pressable>
+            )}
+            {NEXT_STATUS[item.status] && (
+              <Pressable
+                onPress={() => handleAdvanceStatus(item)}
+                disabled={updating}
+                className="bg-primary dark:bg-primary-dark px-4 py-2.5 rounded-xl active:opacity-90 flex-row items-center"
+                style={{ gap: 4 }}
+              >
+                <Text className="text-white text-sm font-bold">
+                  {item.status === "pending" ? "Start" : "Complete"}
+                </Text>
+                <MaterialCommunityIcons name={item.status === "pending" ? "arrow-right" : "check"} size={14} color="#FFFFFF" />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </Pressable>
+    );
+  };
+
   return (
     <View className="flex-1 bg-background dark:bg-background-dark">
-      {/* Header */}
       <View className="px-6 pb-4" style={{ paddingTop: topInset }}>
-        <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">
-          My Tasks
-        </Text>
+        <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">My Tasks</Text>
         <Text className="text-sm text-text-secondary font-medium mt-0.5">
           {tasks.length} total task{tasks.length !== 1 ? "s" : ""} assigned to you
         </Text>
       </View>
 
-      {/* Filter tabs */}
       <View className="px-6 mb-4">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row gap-2">
@@ -201,32 +327,12 @@ export default function TasksScreen() {
                   key={f.key}
                   onPress={() => setActiveFilter(f.key)}
                   className={`px-4 py-3 rounded-xl flex-row items-center gap-1.5 ${
-                    active
-                      ? "bg-primary dark:bg-primary-dark"
-                      : "bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-800"
+                    active ? "bg-primary dark:bg-primary-dark" : "bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-800"
                   }`}
                 >
-                  <Text
-                    className={`text-sm font-bold ${
-                      active
-                        ? "text-white"
-                        : "text-text-primary dark:text-text-primary-dark"
-                    }`}
-                  >
-                    {f.label}
-                  </Text>
-                  <View
-                    className={`px-2 py-1 rounded-full ${
-                      active ? "bg-white/25" : "bg-gray-100 dark:bg-zinc-800"
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm font-black ${
-                        active ? "text-white" : "text-text-secondary"
-                      }`}
-                    >
-                      {count}
-                    </Text>
+                  <Text className={`text-sm font-bold ${active ? "text-white" : "text-text-primary dark:text-text-primary-dark"}`}>{f.label}</Text>
+                  <View className={`px-2 py-1 rounded-full ${active ? "bg-white/25" : "bg-gray-100 dark:bg-zinc-800"}`}>
+                    <Text className={`text-sm font-black ${active ? "text-white" : "text-text-secondary"}`}>{count}</Text>
                   </View>
                 </Pressable>
               );
@@ -235,28 +341,18 @@ export default function TasksScreen() {
         </ScrollView>
       </View>
 
-      {/* Task list */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#0F7A5F" />
         </View>
       ) : filteredTasks.length === 0 ? (
         <View className="flex-1 justify-center items-center px-8">
-          <MaterialCommunityIcons
-            name={activeFilter === "done" ? "party-popper" : "clipboard-text-outline"}
-            size={36}
-            color="#9E9E9E"
-            style={{ marginBottom: 16 }}
-          />
+          <MaterialCommunityIcons name={activeFilter === "done" ? "party-popper" : "clipboard-text-outline"} size={36} color="#9E9E9E" style={{ marginBottom: 16 }} />
           <Text className="text-text-primary dark:text-text-primary-dark font-bold text-center text-base">
-            {activeFilter === "all"
-              ? "No tasks assigned yet"
-              : `No ${activeFilter.replace("_", " ")} tasks`}
+            {activeFilter === "all" ? "No tasks assigned yet" : `No ${activeFilter.replace("_", " ")} tasks`}
           </Text>
           <Text className="text-text-secondary text-sm text-center mt-1">
-            {activeFilter === "all"
-              ? "Your manager will assign tasks here."
-              : "Try switching to a different filter."}
+            {activeFilter === "all" ? "Your manager will assign tasks here." : "Try switching to a different filter."}
           </Text>
         </View>
       ) : (
@@ -265,167 +361,46 @@ export default function TasksScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ItemSeparatorComponent={() => <View className="h-3" />}
-          renderItem={({ item }) => {
-            const meta = STATUS_META[item.status] ?? STATUS_META.pending;
-            const overdue = isOverdue(item.dueDate, item.status);
-            return (
-              <Pressable
-                onPress={() => setSelectedTask(item)}
-                className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm active:opacity-90"
-              >
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1 mr-3">
-                    <Text
-                      className="font-bold text-base text-text-primary dark:text-text-primary-dark"
-                      numberOfLines={1}
-                    >
-                      {item.title}
-                    </Text>
-                    {item.partyName && (
-                      <View className="flex-row items-center mt-0.5" style={{ gap: 4 }}>
-                        <MaterialCommunityIcons name="store" size={13} color="#6B7280" />
-                        <Text className="text-sm text-text-secondary">
-                          {item.partyName}
-                        </Text>
-                      </View>
-                    )}
-                    {item.description ? (
-                      <Text
-                        className="text-sm text-text-secondary mt-1"
-                        numberOfLines={2}
-                      >
-                        {item.description}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View
-                    className={`px-2.5 py-1.5 rounded-xl flex-row items-center ${meta.bg}`}
-                    style={{ gap: 4 }}
-                  >
-                    <MaterialCommunityIcons name={meta.icon} size={13} color={ICON_COLOR_BY_STATUS[item.status]} />
-                    <Text className={`text-sm font-bold ${meta.text}`}>
-                      {meta.label}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Footer row */}
-                <View className="flex-row items-center justify-between mt-3">
-                  <View className="flex-row items-center gap-3">
-                    {item.dueDate && (
-                      <View className="flex-row items-center gap-1">
-                        <MaterialCommunityIcons
-                          name={overdue ? "alert-circle" : "calendar"}
-                          size={13}
-                          color={overdue ? "#EF4444" : "#6B7280"}
-                        />
-                        <Text
-                          className={`text-sm font-semibold ${
-                            overdue ? "text-red-500" : "text-text-secondary"
-                          }`}
-                        >
-                          Due {formatDate(item.dueDate)}
-                          {overdue ? " (Overdue)" : ""}
-                        </Text>
-                      </View>
-                    )}
-                    {item.challanId && (
-                      <View className="flex-row items-center" style={{ gap: 4 }}>
-                        <MaterialCommunityIcons name="truck" size={13} color="#0F7A5F" />
-                        <Text className="text-sm text-primary font-semibold">
-                          Challan linked
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  {NEXT_STATUS[item.status] && (
-                    <Pressable
-                      onPress={() => handleAdvanceStatus(item)}
-                      disabled={updating}
-                      className="bg-primary dark:bg-primary-dark px-4 py-2.5 rounded-xl active:opacity-90 flex-row items-center"
-                      style={{ gap: 4 }}
-                    >
-                      <Text className="text-white text-sm font-bold">
-                        {item.status === "pending" ? "Start" : "Done"}
-                      </Text>
-                      <MaterialCommunityIcons
-                        name={item.status === "pending" ? "arrow-right" : "check"}
-                        size={14}
-                        color="#FFFFFF"
-                      />
-                    </Pressable>
-                  )}
-                </View>
-              </Pressable>
-            );
-          }}
+          renderItem={({ item }) => renderTaskCard(item)}
         />
       )}
 
       {/* Task Detail Modal */}
-      <Modal
-        visible={!!selectedTask}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setSelectedTask(null)}
-      >
+      <Modal visible={!!selectedTask && !showVisitModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedTask(null)}>
         {selectedTask && (
           <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pt-8 pb-12">
-            {/* Modal header */}
             <View className="flex-row justify-between items-start mb-6">
-              <Text className="text-xl font-black text-text-primary dark:text-text-primary-dark flex-1 mr-3">
-                Task Detail
-              </Text>
-              <Pressable
-                onPress={() => setSelectedTask(null)}
-                className="w-11 h-11 rounded-full bg-gray-100 dark:bg-zinc-800 justify-center items-center"
-              >
+              <Text className="text-xl font-black text-text-primary dark:text-text-primary-dark flex-1 mr-3">Task Detail</Text>
+              <Pressable onPress={() => setSelectedTask(null)} className="w-11 h-11 rounded-full bg-gray-100 dark:bg-zinc-800 justify-center items-center">
                 <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
               </Pressable>
             </View>
 
-            {/* Status badge */}
             {(() => {
-              const meta =
-                STATUS_META[selectedTask.status] ?? STATUS_META.pending;
+              const meta = STATUS_META[selectedTask.status] ?? STATUS_META.pending;
               return (
-                <View
-                  className={`self-start px-4 py-2 rounded-2xl mb-5 flex-row items-center ${meta.bg}`}
-                  style={{ gap: 6 }}
-                >
-                  <MaterialCommunityIcons
-                    name={meta.icon}
-                    size={15}
-                    color={ICON_COLOR_BY_STATUS[selectedTask.status]}
-                  />
-                  <Text className={`text-sm font-bold ${meta.text}`}>
-                    {meta.label}
-                  </Text>
+                <View className={`self-start px-4 py-2 rounded-2xl mb-5 flex-row items-center ${meta.bg}`} style={{ gap: 6 }}>
+                  <MaterialCommunityIcons name={meta.icon} size={15} color={ICON_COLOR_BY_STATUS[selectedTask.status]} />
+                  <Text className={`text-sm font-bold ${meta.text}`}>{meta.label}</Text>
                 </View>
               );
             })()}
 
-            {/* Title */}
-            <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark mb-2">
-              {selectedTask.title}
-            </Text>
+            <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark mb-2">{selectedTask.title}</Text>
 
-            {/* Meta fields */}
             <View className="gap-3 mb-6">
-              {selectedTask.partyName && (
+              {(selectedTask.party?.name || selectedTask.partyName) && (
                 <View className="flex-row items-center gap-2">
                   <MaterialCommunityIcons name="store" size={18} color="#6B7280" />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">
-                      Party
-                    </Text>
+                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Customer</Text>
                     <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
-                      {selectedTask.partyName}
+                      {selectedTask.party?.name ?? selectedTask.partyName}
                     </Text>
+                    {selectedTask.party?.phone && <Text className="text-xs text-text-secondary">{selectedTask.party.phone}</Text>}
+                    {selectedTask.party?.address && <Text className="text-xs text-text-secondary">{selectedTask.party.address}</Text>}
                   </View>
                 </View>
               )}
@@ -433,69 +408,72 @@ export default function TasksScreen() {
                 <View className="flex-row items-center gap-2">
                   <MaterialCommunityIcons name="calendar" size={18} color="#6B7280" />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">
-                      Due Date
-                    </Text>
+                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Due Date</Text>
                     <View className="flex-row items-center" style={{ gap: 4 }}>
-                      <Text
-                        className={`text-sm font-bold ${
-                          isOverdue(selectedTask.dueDate, selectedTask.status)
-                            ? "text-red-500"
-                            : "text-text-primary dark:text-text-primary-dark"
-                        }`}
-                      >
+                      <Text className={`text-sm font-bold ${isOverdue(selectedTask.dueDate, selectedTask.status) ? "text-red-500" : "text-text-primary dark:text-text-primary-dark"}`}>
                         {formatDate(selectedTask.dueDate)}
                       </Text>
                       {isOverdue(selectedTask.dueDate, selectedTask.status) && (
-                        <>
-                          <MaterialCommunityIcons name="alert-circle" size={13} color="#EF4444" />
-                          <Text className="text-sm font-bold text-red-500">Overdue</Text>
-                        </>
+                        <><MaterialCommunityIcons name="alert-circle" size={13} color="#EF4444" /><Text className="text-sm font-bold text-red-500">Overdue</Text></>
                       )}
                     </View>
                   </View>
                 </View>
               )}
-              {selectedTask.challanId && (
+              {selectedTask.visitedAt && (
                 <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="truck" size={18} color="#0F7A5F" />
+                  <MaterialCommunityIcons name="map-marker-check" size={18} color="#0F7A5F" />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">
-                      Linked Challan
-                    </Text>
-                    <Text className="text-sm font-bold text-primary dark:text-primary-dark">
-                      #{selectedTask.challanId}
-                    </Text>
+                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Visited At</Text>
+                    <Text className="text-sm font-bold text-primary">{formatDate(selectedTask.visitedAt)}</Text>
+                  </View>
+                </View>
+              )}
+              {selectedTask.visitOutcome && (
+                <View className="flex-row items-center gap-2">
+                  <MaterialCommunityIcons name="check-circle" size={18} color="#15803D" />
+                  <View>
+                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Outcome</Text>
+                    <Text className="text-sm font-bold text-green-700 capitalize">{selectedTask.visitOutcome.replace("_", " ")}</Text>
                   </View>
                 </View>
               )}
             </View>
 
-            {/* Description */}
             {selectedTask.description && (
               <View className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-5">
-                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider mb-2">
-                  Instructions
-                </Text>
-                <Text className="text-sm text-text-primary dark:text-text-primary-dark leading-relaxed">
-                  {selectedTask.description}
-                </Text>
+                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider mb-2">Instructions</Text>
+                <Text className="text-sm text-text-primary dark:text-text-primary-dark leading-relaxed">{selectedTask.description}</Text>
               </View>
             )}
 
-            {/* Notes */}
+            {selectedTask.visitNotes && (
+              <View className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-900/40 mb-5">
+                <Text className="text-sm text-blue-700 font-semibold uppercase tracking-wider mb-1">Visit Notes</Text>
+                <Text className="text-sm text-blue-900 dark:text-blue-300">{selectedTask.visitNotes}</Text>
+              </View>
+            )}
+
             {selectedTask.notes && (
               <View className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-4 border border-amber-200 dark:border-amber-900/40 mb-5">
-                <Text className="text-sm text-amber-700 font-semibold uppercase tracking-wider mb-1">
-                  Notes
-                </Text>
-                <Text className="text-sm text-amber-900 dark:text-amber-300">
-                  {selectedTask.notes}
-                </Text>
+                <Text className="text-sm text-amber-700 font-semibold uppercase tracking-wider mb-1">Notes</Text>
+                <Text className="text-sm text-amber-900 dark:text-amber-300">{selectedTask.notes}</Text>
               </View>
             )}
 
-            {/* Actions */}
+            {selectedTask.status === "in_progress" && !selectedTask.visitedAt && (
+              <Pressable
+                onPress={() => handleCheckIn(selectedTask)}
+                disabled={updating}
+                className="bg-amber-500 py-4 rounded-2xl items-center justify-center shadow-md active:opacity-90 mt-4 flex-row"
+                style={{ gap: 8 }}
+              >
+                {updating ? <ActivityIndicator color="white" /> : (
+                  <><MaterialCommunityIcons name="map-marker" size={18} color="#FFFFFF" /><Text className="text-white font-bold text-lg uppercase tracking-wider">Check In at Location</Text></>
+                )}
+              </Pressable>
+            )}
+
             {NEXT_STATUS[selectedTask.status] && (
               <Pressable
                 onPress={() => handleAdvanceStatus(selectedTask)}
@@ -503,19 +481,10 @@ export default function TasksScreen() {
                 className="bg-primary dark:bg-primary-dark py-4 rounded-2xl items-center justify-center shadow-md active:opacity-90 mt-4 flex-row"
                 style={{ gap: 8 }}
               >
-                {updating ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons
-                      name={selectedTask.status === "pending" ? "play" : "check"}
-                      size={18}
-                      color="#FFFFFF"
-                    />
+                {updating ? <ActivityIndicator color="white" /> : (
+                  <><MaterialCommunityIcons name={selectedTask.status === "pending" ? "play" : "check-circle"} size={18} color="#FFFFFF" />
                     <Text className="text-white font-bold text-lg uppercase tracking-wider">
-                      {selectedTask.status === "pending"
-                        ? "Mark as In Progress"
-                        : "Mark as Done"}
+                      {selectedTask.status === "pending" ? "Start Task" : "Complete Visit"}
                     </Text>
                   </>
                 )}
@@ -525,20 +494,75 @@ export default function TasksScreen() {
             {selectedTask.status === "done" && (
               <View className="bg-green-50 dark:bg-green-950/20 rounded-2xl p-4 items-center border border-green-200 dark:border-green-900/40 mt-4">
                 <MaterialCommunityIcons name="party-popper" size={24} color="#15803D" style={{ marginBottom: 4 }} />
-                <Text className="text-green-700 dark:text-green-400 font-bold text-base">
-                  Task Completed
-                </Text>
+                <Text className="text-green-700 dark:text-green-400 font-bold text-base">Task Completed</Text>
               </View>
             )}
 
-            <Pressable
-              onPress={() => setSelectedTask(null)}
-              className="border border-gray-200 dark:border-zinc-800 py-4 rounded-2xl items-center mt-3"
-            >
+            <Pressable onPress={() => setSelectedTask(null)} className="border border-gray-200 dark:border-zinc-800 py-4 rounded-2xl items-center mt-3">
               <Text className="text-text-secondary font-bold text-base">Close</Text>
             </Pressable>
           </ScrollView>
         )}
+      </Modal>
+
+      {/* Visit Completion Modal */}
+      <Modal visible={showVisitModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowVisitModal(false)}>
+        <View className="flex-1 bg-background dark:bg-background-dark px-6 pt-8 pb-12">
+          <View className="flex-row justify-between items-start mb-6">
+            <Text className="text-xl font-black text-text-primary dark:text-text-primary-dark flex-1 mr-3">Complete Visit</Text>
+            <Pressable onPress={() => setShowVisitModal(false)} className="w-11 h-11 rounded-full bg-gray-100 dark:bg-zinc-800 justify-center items-center">
+              <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
+            </Pressable>
+          </View>
+
+          {visitTask && (
+            <>
+              <View className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-6">
+                <Text className="font-bold text-base text-text-primary">{visitTask.title}</Text>
+                <Text className="text-sm text-text-secondary mt-1">{visitTask.party?.name ?? visitTask.partyName}</Text>
+              </View>
+
+              <Text className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-3">Visit Outcome *</Text>
+              <View className="flex-row flex-wrap gap-2 mb-6">
+                {VISIT_OUTCOMES.map((o) => (
+                  <Pressable
+                    key={o.key}
+                    onPress={() => setSelectedOutcome(o.key)}
+                    className={`px-4 py-3 rounded-xl border flex-row items-center gap-2 ${
+                      selectedOutcome === o.key ? "bg-primary border-primary" : "bg-surface dark:bg-surface-dark border-gray-200 dark:border-zinc-800"
+                    }`}
+                  >
+                    <MaterialCommunityIcons name={o.icon as MCIName} size={16} color={selectedOutcome === o.key ? "white" : "#6B7280"} />
+                    <Text className={`text-sm font-bold ${selectedOutcome === o.key ? "text-white" : "text-text-primary"}`}>{o.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-2">Visit Notes</Text>
+              <TextInput
+                className="bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-text-primary mb-6"
+                placeholder="What happened during the visit?"
+                placeholderTextColor="#9CA3AF"
+                value={visitNotes}
+                onChangeText={setVisitNotes}
+                multiline
+              />
+
+              <Pressable
+                onPress={handleCompleteVisit}
+                disabled={!selectedOutcome || visitSubmitting}
+                className="bg-primary dark:bg-primary-dark py-4 rounded-2xl items-center justify-center shadow-md active:opacity-90 flex-row"
+                style={{ gap: 8 }}
+              >
+                {visitSubmitting ? <ActivityIndicator color="white" /> : (
+                  <><MaterialCommunityIcons name="check-circle" size={18} color="#FFFFFF" />
+                    <Text className="text-white font-bold text-lg">Complete Visit</Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          )}
+        </View>
       </Modal>
     </View>
   );
