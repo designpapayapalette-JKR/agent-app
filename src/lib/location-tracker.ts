@@ -1,7 +1,7 @@
 /**
  * location-tracker.ts
  *
- * Background GPS location tracking service for the Agent App.
+ * Background GPS location tracking service for MMC Agent.
  *
  * Architecture:
  *  - Uses expo-task-manager to register a named background task
@@ -156,7 +156,7 @@ export async function startTracking(
       showsBackgroundLocationIndicator: true, // iOS: shows the blue bar
       foregroundService: {
         // Android: keeps the task alive
-        notificationTitle: "managemycounter Agent",
+        notificationTitle: "MMC Agent",
         notificationBody: "Location tracking is active while on duty.",
         notificationColor: "#0F7A5F",
       },

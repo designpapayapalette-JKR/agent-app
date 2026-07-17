@@ -105,7 +105,7 @@ export default function ProfileScreen() {
   const handleLogout = () => {
     Alert.alert(
       t("staff")?.includes("कामगार") ? "लॉग आउट" : "Sign Out",
-      t("staff")?.includes("कामगार") ? "क्या आप वाकई एम्प्लोयी ऐप से साइन आउट करना चाहते हैं?" : "Are you sure you want to sign out of the Employee App?",
+      t("staff")?.includes("कामगार") ? "क्या आप वाकई MMC Agent से साइन आउट करना चाहते हैं?" : "Are you sure you want to sign out of MMC Agent?",
       [
         { text: t("staff")?.includes("कामगार") ? "रद्द करें" : "Cancel", style: "cancel" },
         {
@@ -365,7 +365,7 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text className="text-center text-text-secondary text-sm mt-4 font-medium">
-          managemycounter · Employee App · v{APP_VERSION}
+          MMC Agent · v{APP_VERSION}
         </Text>
       </View>
     </ScrollView>

@@ -13,11 +13,11 @@ interface StoredDocument {
   label: string;
 }
 
-// Stored locally on-device only (no backend) — this is the employee's own
+// Stored locally on-device only (no backend) — this is the staff member's own
 // quick-access wallet for ID cards/documents, not a company-visible HR
 // record. Filenames are prefixed with a label so they survive app restarts
 // without needing a separate index file.
-const DOCS_DIR_NAME = "employee-documents";
+const DOCS_DIR_NAME = "mmc-agent-documents";
 
 function labelFromFilename(filename: string): string {
   const withoutExt = filename.replace(/\.[^.]+$/, "");

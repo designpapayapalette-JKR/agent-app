@@ -1,5 +1,5 @@
 /**
- * app/_layout.tsx — Employee App root layout
+ * app/_layout.tsx — MMC Agent root layout
  *
  * Responsibilities:
  *  1. Wrap the entire app in AuthProvider

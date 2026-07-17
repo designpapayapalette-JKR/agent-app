@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Employee",
-    "slug": "agent-app",
-    "scheme": "agentapp",
+    "name": "MMC Agent",
+    "slug": "mmc-agent",
+    "scheme": "mmcagent",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -20,8 +20,45 @@
         "UIBackgroundModes": ["location"]
       }
     },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow MMC Agent to access your location to track delivery progress and verify duty check-ins."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MMC Agent to access the camera to photograph receipts and document papers."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF9F6"
+    },
     "android": {
       "package": "com.papayapalette.agent",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAF9F6"
+      },
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
@@ -38,33 +75,6 @@
         "android.permission.READ_CALL_LOG"
       ]
     },
-    "plugins": [
-      "expo-router",
-      "expo-dev-client",
-      "expo-secure-store",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow Employee App to access your location to track delivery progress and verify duty check-ins."
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow Employee App to access the camera to photograph receipts and document papers."
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "enableProguardInReleaseBuilds": false,
-            "enableShrinkResourcesInReleaseBuilds": false,
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
-    ],
     "experiments": {
       "typedRoutes": true
     },
