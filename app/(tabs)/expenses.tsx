@@ -44,6 +44,9 @@ export default function ExpensesScreen() {
 
   // Form State
   const [category, setCategory] = useState("travel");
+  // Suggested categories — a starting list plus whatever custom categories
+  // this company has already used. Free text is still accepted below.
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(["travel", "fuel", "food", "other"]);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +69,9 @@ export default function ExpensesScreen() {
 
   useEffect(() => {
     fetchExpenses();
+    api.get<{ data: string[] }>("/expenses/categories")
+      .then((res) => { if (res.data) setCategoryOptions(res.data); })
+      .catch(() => {});
   }, [user]);
 
   const resetExpenseForm = () => {
@@ -286,19 +292,19 @@ export default function ExpensesScreen() {
                 {t("expenses")?.includes("खर्चे") ? "श्रेणी (Category) *" : "Category *"}
               </Text>
               <ScrollView horizontal className="flex-row" showsHorizontalScrollIndicator={false}>
-                {["travel", "fuel", "food", "other"].map((cat) => (
+                {categoryOptions.map((cat) => (
                   <Pressable
                     key={cat}
                     onPress={() => setCategory(cat)}
                     className={`mr-2 px-4 py-3 rounded-xl border ${
-                      category === cat
+                      category.toLowerCase() === cat.toLowerCase()
                         ? "bg-primary border-primary dark:bg-primary-dark"
                         : "bg-surface border-gray-200 dark:border-zinc-800"
                     }`}
                   >
                     <Text
                       className={`text-sm font-bold capitalize ${
-                        category === cat ? "text-white" : "text-text-primary dark:text-text-primary-dark"
+                        category.toLowerCase() === cat.toLowerCase() ? "text-white" : "text-text-primary dark:text-text-primary-dark"
                       }`}
                     >
                       {(() => {
@@ -309,12 +315,18 @@ export default function ExpensesScreen() {
                           food: "भोजन",
                           other: "अन्य",
                         };
-                        return catHi[cat] ?? cat;
+                        return catHi[cat.toLowerCase()] ?? cat;
                       })()}
                     </Text>
                   </Pressable>
                 ))}
               </ScrollView>
+              <TextInput
+                value={category}
+                onChangeText={setCategory}
+                placeholder={t("expenses")?.includes("खर्चे") ? "या कस्टम श्रेणी टाइप करें..." : "Or type a custom category..."}
+                className="bg-surface dark:bg-zinc-900 text-text-primary dark:text-text-primary-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm font-medium mt-2"
+              />
             </View>
 
             {/* Amount */}
