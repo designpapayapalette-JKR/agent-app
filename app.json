@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MMC Agent",
-    "slug": "mmc-agent",
+    "slug": "agent-app",
     "scheme": "mmcagent",
     "version": "0.1.0",
     "orientation": "portrait",
