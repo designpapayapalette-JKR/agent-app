@@ -21,11 +21,13 @@ module.exports = {
         error: { DEFAULT: "#D64545" },
         info: { DEFAULT: "#0368FE" },
       },
-      // "Gilroy" matches the family name registered via expo-font (see
-      // src/lib/fonts.ts) — a no-op stub until real Gilroy font files are
-      // supplied, since RN's require() on a missing asset breaks the bundle.
+      // Family names match what src/lib/fonts.ts registers via expo-font.
+      // Only 2 real weights exist (Light 300, ExtraBold 800 — free tier).
+      // "sans" (body default) uses Light; "heading" (ExtraBold) is
+      // available for headings/emphasis via font-heading.
       fontFamily: {
-        sans: ["Gilroy"],
+        sans: ["Gilroy-Light"],
+        heading: ["Gilroy-ExtraBold"],
       },
     },
   },

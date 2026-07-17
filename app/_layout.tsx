@@ -30,6 +30,7 @@ import {
 } from "../src/lib/location-tracker";
 import { TerminologyProvider } from "../src/lib/terminology-context";
 import { syncQueuedData } from "../src/lib/offlineQueue";
+import { useAppFonts } from "../src/lib/fonts";
 
 // Light-theme only, same as shopkeeper-app — overrides NativeWind's "media"
 // (system) mode so the UI doesn't break on devices with system dark mode on.
@@ -131,9 +132,19 @@ function NavigationGuard() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useAppFonts();
+
   useEffect(() => {
     try { colorScheme.set("light"); } catch {}
   }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0368FE" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
