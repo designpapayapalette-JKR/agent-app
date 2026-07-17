@@ -117,7 +117,7 @@ function NavigationGuard() {
       <View
         style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
       >
-        <ActivityIndicator size="large" color="#0F7A5F" />
+        <ActivityIndicator size="large" color="#0368FE" />
       </View>
     );
   }

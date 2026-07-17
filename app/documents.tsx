@@ -107,7 +107,7 @@ export default function DocumentsScreen() {
         style={{ gap: 12, paddingTop: topInset }}
       >
         <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center -ml-2">
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#0F7A5F" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#0368FE" />
         </Pressable>
         <Text className="text-xl font-bold text-text-primary dark:text-text-primary-dark">My Documents</Text>
       </View>
@@ -124,7 +124,7 @@ export default function DocumentsScreen() {
             className="px-4 py-2.5 rounded-xl border border-dashed border-primary flex-row items-center"
             style={{ gap: 6 }}
           >
-            <MaterialCommunityIcons name="camera-plus-outline" size={16} color="#0F7A5F" />
+            <MaterialCommunityIcons name="camera-plus-outline" size={16} color="#0368FE" />
             <Text className="text-sm font-bold text-primary">{label}</Text>
           </Pressable>
         ))}
@@ -132,7 +132,7 @@ export default function DocumentsScreen() {
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#0F7A5F" />
+          <ActivityIndicator size="large" color="#0368FE" />
         </View>
       ) : (
         <FlatList

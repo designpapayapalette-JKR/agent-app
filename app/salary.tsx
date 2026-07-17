@@ -54,14 +54,14 @@ export default function SalaryScreen() {
         style={{ gap: 12, paddingTop: topInset }}
       >
         <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center -ml-2">
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#0F7A5F" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#0368FE" />
         </Pressable>
         <Text className="text-xl font-bold text-text-primary dark:text-text-primary-dark">My Salary</Text>
       </View>
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#0F7A5F" />
+          <ActivityIndicator size="large" color="#0368FE" />
         </View>
       ) : (
         <FlatList

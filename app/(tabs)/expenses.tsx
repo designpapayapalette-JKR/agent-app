@@ -200,7 +200,7 @@ export default function ExpensesScreen() {
       {/* List of Claims */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0F7A5F" />
+          <ActivityIndicator size="large" color="#0368FE" />
         </View>
       ) : expenses.length === 0 ? (
         <View className="flex-1 justify-center items-center py-20">
@@ -239,7 +239,7 @@ export default function ExpensesScreen() {
                     </Text>
                     {item.attachment && (
                       <View className="flex-row items-center mt-1" style={{ gap: 4 }}>
-                        <MaterialCommunityIcons name="paperclip" size={14} color="#0F7A5F" />
+                        <MaterialCommunityIcons name="paperclip" size={14} color="#0368FE" />
                         <Text className="text-sm text-primary font-bold">
                           receipt_slip.jpg
                         </Text>

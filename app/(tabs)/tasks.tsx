@@ -273,7 +273,7 @@ export default function TasksScreen() {
             )}
             {item.visitedAt && (
               <View className="flex-row items-center gap-1">
-                <MaterialCommunityIcons name="map-marker-check" size={13} color="#0F7A5F" />
+                <MaterialCommunityIcons name="map-marker-check" size={13} color="#0368FE" />
                 <Text className="text-sm text-primary font-semibold">Visited</Text>
               </View>
             )}
@@ -343,7 +343,7 @@ export default function TasksScreen() {
 
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0F7A5F" />
+          <ActivityIndicator size="large" color="#0368FE" />
         </View>
       ) : filteredTasks.length === 0 ? (
         <View className="flex-1 justify-center items-center px-8">
@@ -422,7 +422,7 @@ export default function TasksScreen() {
               )}
               {selectedTask.visitedAt && (
                 <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="map-marker-check" size={18} color="#0F7A5F" />
+                  <MaterialCommunityIcons name="map-marker-check" size={18} color="#0368FE" />
                   <View>
                     <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Visited At</Text>
                     <Text className="text-sm font-bold text-primary">{formatDate(selectedTask.visitedAt)}</Text>

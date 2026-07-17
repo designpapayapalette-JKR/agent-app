@@ -72,7 +72,7 @@ export default function LocationPermissionScreen() {
         <View className="items-center mb-8">
           {/* Map pin illustration */}
           <View className="w-32 h-32 rounded-full bg-primary/10 dark:bg-primary-dark/15 justify-center items-center mb-6 border-2 border-primary/20 dark:border-primary-dark/25">
-            <MaterialCommunityIcons name="shield-check-outline" size={56} color="#0F7A5F" />
+            <MaterialCommunityIcons name="shield-check-outline" size={56} color="#0368FE" />
           </View>
 
           <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark text-center leading-tight mb-3">
@@ -110,7 +110,7 @@ export default function LocationPermissionScreen() {
           ].map((item) => (
             <View key={item.title} className="flex-row gap-4 items-start">
               <View className="w-10 h-10 rounded-2xl bg-primary/10 dark:bg-primary-dark/15 justify-center items-center flex-shrink-0">
-                <MaterialCommunityIcons name={item.icon} size={20} color="#0F7A5F" />
+                <MaterialCommunityIcons name={item.icon} size={20} color="#0368FE" />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark mb-0.5">

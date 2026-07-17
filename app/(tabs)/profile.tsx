@@ -180,7 +180,7 @@ export default function ProfileScreen() {
 
         {loadingStats ? (
           <View className="bg-surface dark:bg-surface-dark rounded-2xl p-8 border border-gray-100 dark:border-zinc-800 items-center mb-6">
-            <ActivityIndicator size="small" color="#0F7A5F" />
+            <ActivityIndicator size="small" color="#0368FE" />
           </View>
         ) : (
           <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
@@ -267,7 +267,7 @@ export default function ProfileScreen() {
             className="px-4 py-3.5 flex-row items-center justify-between border-b border-gray-100 dark:border-zinc-800"
           >
             <View className="flex-row items-center" style={{ gap: 10 }}>
-              <MaterialCommunityIcons name="cash-multiple" size={18} color="#0F7A5F" />
+              <MaterialCommunityIcons name="cash-multiple" size={18} color="#0368FE" />
               <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
                 {t("payroll")}
               </Text>
@@ -279,7 +279,7 @@ export default function ProfileScreen() {
             className="px-4 py-3.5 flex-row items-center justify-between"
           >
             <View className="flex-row items-center" style={{ gap: 10 }}>
-              <MaterialCommunityIcons name="card-account-details-outline" size={18} color="#0F7A5F" />
+              <MaterialCommunityIcons name="card-account-details-outline" size={18} color="#0368FE" />
               <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
                 {t("scannedDocs")}
               </Text>

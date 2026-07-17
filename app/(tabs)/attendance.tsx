@@ -165,7 +165,7 @@ export default function AttendanceScreen() {
       {/* Status details */}
       {loading ? (
         <View className="py-20 justify-center items-center">
-          <ActivityIndicator size="large" color="#0F7A5F" />
+          <ActivityIndicator size="large" color="#0368FE" />
         </View>
       ) : isCheckedIn ? (
         <View className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 p-6 rounded-3xl shadow-sm items-center">

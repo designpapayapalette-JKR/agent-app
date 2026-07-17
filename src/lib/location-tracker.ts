@@ -158,7 +158,7 @@ export async function startTracking(
         // Android: keeps the task alive
         notificationTitle: "MMC Agent",
         notificationBody: "Location tracking is active while on duty.",
-        notificationColor: "#0F7A5F",
+        notificationColor: "#0368FE",
       },
     });
 

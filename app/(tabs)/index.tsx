@@ -197,7 +197,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View className="flex-1 bg-background dark:bg-background-dark justify-center items-center">
-        <ActivityIndicator size="large" color="#0F7A5F" />
+        <ActivityIndicator size="large" color="#0368FE" />
         <Text className="text-text-secondary mt-3 text-sm font-medium">
           Loading your dashboard…
         </Text>
@@ -351,7 +351,7 @@ export default function HomeScreen() {
               className="bg-surface dark:bg-surface-dark border border-gray-100 dark:border-zinc-800 rounded-2xl p-5 items-center shadow-sm active:opacity-80"
               style={{ width: "30%" }}
             >
-              <MaterialCommunityIcons name={action.icon} size={36} color="#0F7A5F" style={{ marginBottom: 8 }} />
+              <MaterialCommunityIcons name={action.icon} size={36} color="#0368FE" style={{ marginBottom: 8 }} />
               <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark text-center">
                 {action.id === "attendance" && (t("staff")?.includes("कामगार") ? "हाजिरी (Check In)" : "Check In")}
                 {action.id === "expenses" && (t("expenses")?.includes("खर्चे") ? "खर्च दर्ज करें" : "Log Expense")}
