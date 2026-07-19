@@ -52,9 +52,14 @@ import { safeRequireExpoLocation, safeRequireExpoTaskManager } from "./isExpoGo"
 
 export const LOCATION_TASK_NAME = "agent-location-background-task";
 
-// Configurable ping interval (milliseconds between GPS updates)
-const PING_INTERVAL_MS = 60_000; // 60 seconds
-const PING_DISTANCE_M = 50; // also trigger if moved > 50m
+// Fallback ping interval/distance, used only if the company-level settings
+// fetch below fails (offline, server error) — real values come from
+// Settings > Field Agent App on the web dashboard (Company.
+// agentLocationPingIntervalSec / agentLocationPingDistanceM), fetched once
+// at tracking start so a company can change tracking frequency without an
+// app store release.
+const DEFAULT_PING_INTERVAL_MS = 60_000;
+const DEFAULT_PING_DISTANCE_M = 50;
 
 // Module-level state (not persisted across app kills)
 let _userId: string | null = null;
@@ -148,11 +153,24 @@ export async function startTracking(
       return { success: true };
     }
 
-    // 4. Start background updates
+    // 4. Pull the company's configured ping frequency (Settings > Field
+    // Agent App on web) — falls back to the defaults above if the request
+    // fails, so a network hiccup at login never blocks tracking entirely.
+    let pingIntervalMs = DEFAULT_PING_INTERVAL_MS;
+    let pingDistanceM = DEFAULT_PING_DISTANCE_M;
+    try {
+      const res = await api.get<{ data: { agentLocationPingIntervalSec?: number; agentLocationPingDistanceM?: number } }>("/companies/me");
+      if (res?.data?.agentLocationPingIntervalSec) pingIntervalMs = res.data.agentLocationPingIntervalSec * 1000;
+      if (res?.data?.agentLocationPingDistanceM) pingDistanceM = res.data.agentLocationPingDistanceM;
+    } catch (e) {
+      console.warn("[LocationTracker] Failed to fetch tracking settings, using defaults:", e);
+    }
+
+    // 5. Start background updates
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.Balanced,
-      timeInterval: PING_INTERVAL_MS,
-      distanceInterval: PING_DISTANCE_M,
+      timeInterval: pingIntervalMs,
+      distanceInterval: pingDistanceM,
       showsBackgroundLocationIndicator: true, // iOS: shows the blue bar
       foregroundService: {
         // Android: keeps the task alive
