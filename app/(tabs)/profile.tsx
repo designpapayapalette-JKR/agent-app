@@ -102,6 +102,46 @@ export default function ProfileScreen() {
     loadStats();
   }, [loadStats]);
 
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const handleDeleteAccount = () => {
+    const isHindi = t("staff")?.includes("कामगार");
+    Alert.alert(
+      isHindi ? "खाता हटाने का अनुरोध?" : "Delete my account?",
+      isHindi
+        ? "हम आपका व्यक्तिगत लॉगिन डेटा 30 दिनों के भीतर हटा देंगे। यह आपकी कंपनी के व्यावसायिक रिकॉर्ड को नहीं हटाएगा।"
+        : "We'll remove your personal login and profile data within 30 days. This won't delete your company's business records.",
+      [
+        { text: isHindi ? "रद्द करें" : "Cancel", style: "cancel" },
+        {
+          text: isHindi ? "अनुरोध भेजें" : "Request Deletion",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingAccount(true);
+            try {
+              await api.post("/account/deletion-request", {
+                name: `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "MMC Agent user",
+                email: user?.email,
+                scope: "own_account",
+                reason: "Requested from the MMC Agent mobile app (Profile > Delete My Account).",
+              });
+              Alert.alert(
+                isHindi ? "अनुरोध प्राप्त हुआ" : "Request received",
+                isHindi ? "हमने आपको एक पुष्टिकरण ईमेल भेजा है।" : "We've emailed you a confirmation. Your data will be processed within 30 days."
+              );
+            } catch (e) {
+              Alert.alert(
+                isHindi ? "कुछ गलत हो गया" : "Something went wrong",
+                isHindi ? "कृपया फिर से प्रयास करें।" : "Please try again, or email hello@managemycounter.com directly."
+              );
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleLogout = () => {
     Alert.alert(
       t("staff")?.includes("कामगार") ? "लॉग आउट" : "Sign Out",
@@ -359,6 +399,24 @@ export default function ProfileScreen() {
               <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
               <Text className="text-red-600 dark:text-red-400 font-bold text-lg">
                 {t("staff")?.includes("कामगार") ? "लॉग आउट करें" : "Sign Out"}
+              </Text>
+            </>
+          )}
+        </Pressable>
+
+        {/* ── Delete Account ── */}
+        <Pressable
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+          className="mt-3 py-3 items-center flex-row justify-center gap-2 active:opacity-70"
+        >
+          {deletingAccount ? (
+            <ActivityIndicator size="small" color="#D64545" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
+              <Text className="text-red-600 dark:text-red-400 font-semibold text-sm">
+                {t("staff")?.includes("कामगार") ? "मेरा खाता हटाएं" : "Delete My Account"}
               </Text>
             </>
           )}
