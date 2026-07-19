@@ -3,8 +3,13 @@ import { safeRequireExpoLocation } from "./isExpoGo";
 import { Camera } from "expo-camera";
 
 /**
- * Prompts the user for all required sensor permissions (Location, Background Location, Camera, Microphone, Bluetooth, WiFi, and Call Logs/Phone State).
+ * Prompts the user for all required sensor permissions (Location, Background Location, Camera, Microphone, Bluetooth, WiFi).
  * Complies with Google Play and Apple App Store guidelines by isolating OS-specific APIs.
+ *
+ * Deliberately does NOT request READ_PHONE_STATE / READ_CALL_LOG — these are
+ * Google Play Restricted Permissions limited to default dialer/SMS-handler
+ * apps and would block Play Store review for a field-agent/billing app with
+ * no feature that actually needs call history or phone state.
  */
 export async function requestAppPermissions() {
   const results = {
@@ -12,7 +17,6 @@ export async function requestAppPermissions() {
     locationBackground: false,
     camera: false,
     bluetooth: false,
-    phoneAndCallLogs: false,
     wifi: true,
   };
 
@@ -34,31 +38,18 @@ export async function requestAppPermissions() {
       }
     }
 
-    // 4. Android-Specific Sensor & Diagnostic Permissions (Bluetooth, WiFi state, Call Logs, Phone State)
+    // 4. Android-Specific Sensor Permissions (Bluetooth)
     if (Platform.OS === "android") {
-      const androidVersion = typeof Platform.Version === "string" 
-        ? parseInt(Platform.Version, 10) 
+      const androidVersion = typeof Platform.Version === "string"
+        ? parseInt(Platform.Version, 10)
         : Platform.Version;
 
-      const permissionsToRequest: Permission[] = [
-        PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
-        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
-      ];
-
       if (androidVersion >= 31) {
-        permissionsToRequest.push(
+        const permissionsToRequest: Permission[] = [
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
-        );
-      }
-
-      const granted = await PermissionsAndroid.requestMultiple(permissionsToRequest);
-
-      results.phoneAndCallLogs =
-        granted[PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE] === PermissionsAndroid.RESULTS.GRANTED &&
-        granted[PermissionsAndroid.PERMISSIONS.READ_CALL_LOG] === PermissionsAndroid.RESULTS.GRANTED;
-
-      if (androidVersion >= 31) {
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        ];
+        const granted = await PermissionsAndroid.requestMultiple(permissionsToRequest);
         results.bluetooth =
           granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED &&
           granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED;
@@ -67,7 +58,6 @@ export async function requestAppPermissions() {
       }
     } else {
       results.bluetooth = true;
-      results.phoneAndCallLogs = true; // Auto-pass or simulated for iOS compliance
     }
   } catch (e) {
     console.error("Error prompting sensor permissions:", e);
