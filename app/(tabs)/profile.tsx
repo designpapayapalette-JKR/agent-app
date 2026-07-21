@@ -39,6 +39,7 @@ function capitalize(s: string) {
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
   field_agent: { bg: "bg-blue-100 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" },
   staff: { bg: "bg-purple-100 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" },
+  warehouse_manager: { bg: "bg-orange-100 dark:bg-orange-950/30", text: "text-orange-700 dark:text-orange-400" },
   manager: { bg: "bg-amber-100 dark:bg-amber-950/30", text: "text-amber-700 dark:text-amber-400" },
   owner: { bg: "bg-green-100 dark:bg-green-950/30", text: "text-green-700 dark:text-green-400" },
 };
