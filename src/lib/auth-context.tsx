@@ -5,6 +5,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any | null;
+  userRole: string;
   activeCompany: any | null;
   activeBrand: any | null;
   availableBrands: any[];
@@ -23,6 +24,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeCompany, setActiveCompany] = useState<any | null>(null);
   const [activeBrand, setActiveBrand] = useState<any | null>(null);
   const [availableBrands, setAvailableBrands] = useState<any[]>([]);
+
+  const userRole = user?.role || "field_agent";
+
 
   const fetchTenantData = async () => {
     try {
@@ -117,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         user,
+        userRole,
         activeCompany,
         activeBrand,
         availableBrands,
