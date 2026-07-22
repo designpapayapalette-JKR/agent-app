@@ -43,15 +43,15 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="px-6 py-12 justify-center flex-1 max-w-md mx-auto w-full">
           {/* Logo / Header */}
-          <View className="items-center mb-10">
-            <View className="w-16 h-16 rounded-2xl items-center justify-center shadow-lg mb-4 overflow-hidden">
-              <Image source={require("../../assets/icon.png")} className="w-16 h-16" resizeMode="contain" />
-            </View>
-            <Text className="text-3xl font-extrabold text-text-primary dark:text-text-primary-dark text-center tracking-tight">
-              MMC Agent
-            </Text>
-            <Text className="text-text-secondary dark:text-text-secondary-dark text-center mt-2 font-medium">
-              Field Staff Companion
+          <View className="items-center mb-8">
+            <Image
+              source={require("../../assets/logo-rectangle.png")}
+              style={{ width: 220, height: 60 }}
+              resizeMode="contain"
+              className="mb-2"
+            />
+            <Text className="text-text-secondary dark:text-text-secondary-dark text-center font-medium text-sm">
+              Employee Companion App
             </Text>
           </View>
 
