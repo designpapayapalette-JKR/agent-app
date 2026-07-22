@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "backgroundColor": "#FAF9F6",
+    "backgroundColor": "#fcf9f8",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.papayapalette.agent",
@@ -51,13 +51,13 @@
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAF9F6"
+      "backgroundColor": "#fcf9f8"
     },
     "android": {
       "package": "com.papayapalette.agent",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FAF9F6"
+        "backgroundColor": "#fcf9f8"
       },
       "usesCleartextTraffic": true,
       "permissions": [

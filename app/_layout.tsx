@@ -19,8 +19,12 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View, AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PaperProvider } from "react-native-paper";
 import { colorScheme } from "nativewind";
 import type * as LocationTypes from "expo-location";
+import { MMCTheme } from "../src/theme/mmc-theme";
+import { ConfirmDialogProvider } from "../src/components/ConfirmDialog";
+import { startConnectivityMonitoring } from "../src/lib/connectivity";
 import { AuthProvider, useAuth } from "../src/lib/auth-context";
 import { safeRequireExpoLocation } from "../src/lib/isExpoGo";
 import {
@@ -135,6 +139,7 @@ export default function RootLayout() {
   const [fontsLoaded] = useAppFonts();
 
   useEffect(() => {
+    try { startConnectivityMonitoring(); } catch {}
     try { colorScheme.set("light"); } catch {}
   }, []);
 
@@ -148,12 +153,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <TerminologyProvider>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <NavigationGuard />
-        </AuthProvider>
-      </TerminologyProvider>
+      <PaperProvider theme={MMCTheme}>
+        <TerminologyProvider>
+          <AuthProvider>
+            <ConfirmDialogProvider>
+              <StatusBar style="dark" />
+              <NavigationGuard />
+            </ConfirmDialogProvider>
+          </AuthProvider>
+        </TerminologyProvider>
+      </PaperProvider>
     </SafeAreaProvider>
   );
 }
