@@ -55,7 +55,7 @@ function getInitials(firstName?: string, lastName?: string) {
 }
 
 export default function HomeScreen() {
-  const { user, activeCompany } = useAuth();
+  const { user, userRole, activeCompany } = useAuth();
   const { t } = useTerminology();
   const router = useRouter();
   const topInset = useTopInset();
@@ -223,16 +223,29 @@ export default function HomeScreen() {
             <Text className="text-white text-2xl font-black leading-tight" numberOfLines={1}>
               {user?.first_name ?? "Agent"}
             </Text>
-            {activeCompany?.name && (
-              <Text className="text-white/70 text-sm font-medium mt-0.5" numberOfLines={1}>
-                {activeCompany.name}
-              </Text>
-            )}
+            <View className="flex-row items-center gap-2 mt-1">
+              <View className="bg-white/20 px-2.5 py-0.5 rounded-full">
+                <Text className="text-white text-xs font-bold uppercase tracking-wide">
+                  {userRole === "staff"
+                    ? "Cashier / Biller"
+                    : userRole === "manager"
+                    ? "Store Manager"
+                    : userRole === "warehouse_manager"
+                    ? "Warehouse Manager"
+                    : "Field Agent"}
+                </Text>
+              </View>
+              {activeCompany?.name && (
+                <Text className="text-white/70 text-xs font-medium" numberOfLines={1}>
+                  · {activeCompany.name}
+                </Text>
+              )}
+            </View>
           </View>
           {/* Avatar */}
           <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center border-2 border-white/30">
             <Text className="text-white font-black text-lg">
-              {getInitials(user?.first_name, user?.last_name)}
+              {getInitials(user?.first_name || user?.firstName, user?.last_name || user?.lastName)}
             </Text>
           </View>
         </View>
