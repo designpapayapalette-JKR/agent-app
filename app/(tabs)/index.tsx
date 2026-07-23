@@ -15,6 +15,168 @@ import { api } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
 import { useTerminology } from "../../src/lib/terminology-context";
 import { getQueuedCount, syncQueuedData } from "../../src/lib/offlineQueue";
+import { LinearGradient } from "expo-linear-gradient";
+import { useModuleVisibility } from "../../src/lib/useModuleVisibility";
+import { roleLabel, roleColor } from "../../src/lib/roles";
+import KpiCarousel from "../../src/components/KpiCarousel";
+import ModuleGridSection from "../../src/components/ModuleGridSection";
+
+function formatRupee(n: number): string {
+  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+// Cashier / Store Manager / Warehouse Manager home — the role-scoped
+// module grid (Deep-Review doc §5). Field Agent keeps its own dedicated
+// dashboard below (FieldAgentHome) since its job is a handful of fixed
+// actions, not a browsable module grid — see moduleCategories.ts's header
+// comment for why the two are deliberately different shapes.
+function StaffHome() {
+  const { user, userRole, activeCompany } = useAuth();
+  const router = useRouter();
+  const topInset = useTopInset();
+  const { getVisibleCategories } = useModuleVisibility(userRole);
+
+  const [stats, setStats] = useState({ salesToday: 0, invoicesToday: 0, cashTotal: 0, upiTotal: 0 });
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [pendingTransferCount, setPendingTransferCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const isStaff = userRole === "staff";
+  const isWarehouse = userRole === "warehouse_manager";
+  const initials = [user?.first_name || user?.firstName, user?.last_name || user?.lastName].filter(Boolean).map((s: string) => s[0]).join("").toUpperCase() || "U";
+
+  const fetchData = useCallback(async () => {
+    try {
+      const dashRes = await api.get<any>("/dashboard").catch(() => ({ data: {} }));
+      setStats({
+        salesToday: parseFloat(dashRes.data?.salesToday ?? 0),
+        invoicesToday: parseInt(dashRes.data?.invoicesToday ?? 0),
+        cashTotal: parseFloat(dashRes.data?.cashTotal ?? 0),
+        upiTotal: parseFloat(dashRes.data?.upiTotal ?? 0),
+      });
+      if (isWarehouse) {
+        const stockRes = await api.get<any>("/products/low-stock").catch(() => ({ data: [] }));
+        setLowStockCount(Array.isArray(stockRes.data) ? stockRes.data.length : 0);
+        const transferRes = await api.get<any>("/stock-transfer-requests", { params: { status: "pending" } }).catch(() => ({ data: [] }));
+        setPendingTransferCount(Array.isArray(transferRes.data) ? transferRes.data.length : 0);
+      }
+    } catch {
+      // Best-effort dashboard — leave stats at their defaults on failure.
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [isWarehouse]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const visibleCategories = getVisibleCategories();
+
+  if (loading) {
+    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#0368FE" /></View>;
+  }
+
+  return (
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerStyle={{ paddingBottom: 32 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+    >
+      {/* Gradient hero — matches login screen's visual language
+          (feedback_ui_visual_quality.md). */}
+      <LinearGradient
+        colors={["#0368FE", "#000D3A"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          paddingTop: topInset + 16,
+          paddingBottom: 36,
+          paddingHorizontal: 20,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          overflow: "hidden",
+        }}
+      >
+        <View style={{ position: "absolute", top: -50, right: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(255,255,255,0.08)" }} />
+        <View style={{ position: "absolute", bottom: -40, left: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(3,168,254,0.16)" }} />
+
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "800" }}>Namaste, {user?.first_name || user?.firstName || "User"}</Text>
+            <View className="flex-row items-center flex-wrap mt-1.5" style={{ gap: 6 }}>
+              {activeCompany?.name ? (
+                <View className="flex-row items-center" style={{ gap: 4 }}>
+                  <MaterialCommunityIcons name="store" size={12} color="rgba(255,255,255,0.65)" />
+                  <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12 }}>{activeCompany.name}</Text>
+                </View>
+              ) : null}
+              <View style={{ backgroundColor: "#FFFFFF", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 }}>
+                <Text style={{ color: roleColor(userRole), fontSize: 11, fontWeight: "800" }}>{roleLabel(userRole)}</Text>
+              </View>
+            </View>
+          </View>
+          <View
+            className="w-[44px] h-[44px] rounded-full items-center justify-center"
+            style={{ backgroundColor: "rgba(255,255,255,0.16)", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.35)" }}
+          >
+            <Text className="text-white font-bold" style={{ fontSize: 17 }}>{initials}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <KpiCarousel
+        items={[
+          { value: formatRupee(stats.salesToday), label: "Today's Sales", color: "#0368FE", icon: "cash" },
+          { value: String(stats.invoicesToday), label: "Bills", color: "#375DFB", icon: "receipt" },
+          ...(isWarehouse
+            ? [
+                { value: String(lowStockCount), label: "Low Stock", color: lowStockCount > 0 ? "#D64545" : "#6B7280", icon: "package-variant-closed" },
+                { value: String(pendingTransferCount), label: "Transfers", color: "#835400", icon: "transfer" },
+              ]
+            : [
+                { value: formatRupee(stats.cashTotal), label: "Cash", color: "#2E9E5B", icon: "cash-multiple" },
+                { value: formatRupee(stats.upiTotal), label: "UPI", color: "#0368FE", icon: "qrcode" },
+              ]),
+        ]}
+      />
+      <View style={{ marginTop: 16 }}>
+
+      {isStaff && (
+        <View className="mx-5 mb-4">
+          <Pressable onPress={() => router.push("/pos" as any)} className="active:opacity-90">
+            <LinearGradient
+              colors={["#0368FE", "#03A8FE"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                borderRadius: 18,
+                paddingHorizontal: 20,
+                paddingVertical: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                shadowColor: "#0368FE",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.3,
+                shadowRadius: 12,
+                elevation: 5,
+              }}
+            >
+              <Text className="text-white font-bold" style={{ fontSize: 16 }}>New Sale</Text>
+              <MaterialCommunityIcons name="point-of-sale" size={22} color="#FFFFFF" />
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
+
+      {visibleCategories.map((cat) => (
+        <ModuleGridSection key={cat.id} id={cat.id} label={cat.label} icon={cat.icon} items={cat.children} />
+      ))}
+      </View>
+    </ScrollView>
+  );
+}
 
 type MCIName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -55,6 +217,16 @@ function getInitials(firstName?: string, lastName?: string) {
 }
 
 export default function HomeScreen() {
+  const { userRole } = useAuth();
+  // Cashier/Store Manager/Warehouse Manager get the role-scoped module grid;
+  // Field Agent keeps its existing dedicated dashboard (below).
+  if (userRole !== "field_agent") {
+    return <StaffHome />;
+  }
+  return <FieldAgentHome />;
+}
+
+function FieldAgentHome() {
   const { user, userRole, activeCompany } = useAuth();
   const { t } = useTerminology();
   const router = useRouter();
@@ -214,7 +386,14 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* ── Header ── */}
-      <View className="px-6 pb-6 bg-primary dark:bg-primary-dark" style={{ paddingTop: topInset }}>
+      <LinearGradient
+        colors={["#0368FE", "#000D3A"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: topInset, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: "hidden" }}
+      >
+        <View style={{ position: "absolute", top: -50, right: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(255,255,255,0.08)" }} />
+        <View style={{ position: "absolute", bottom: -40, left: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(3,168,254,0.16)" }} />
         <View className="flex-row justify-between items-center">
           <View className="flex-1 mr-4">
             <Text className="text-white/70 text-sm font-semibold uppercase tracking-widest mb-0.5">
@@ -280,7 +459,7 @@ export default function HomeScreen() {
             </Pressable>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       <View className="px-6 pt-6 pb-10">
         {/* ── Offline Sync Banner ── */}

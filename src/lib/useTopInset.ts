@@ -9,3 +9,9 @@ export function useTopInset(extra: number = 16): number {
   const insets = useSafeAreaInsets();
   return insets.top + extra;
 }
+
+// Re-exported here too — several ported screens (from shopkeeper-app, where
+// both hooks live in this one file) import useBottomInset from
+// "./useTopInset" rather than "./useBottomInset". Keeping both import paths
+// working avoids touching each ported screen's imports individually.
+export { useBottomInset } from "./useBottomInset";

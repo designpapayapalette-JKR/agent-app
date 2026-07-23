@@ -10,11 +10,13 @@ import {
   useColorScheme,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/lib/auth-context";
 import { api } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
 import { useTerminology } from "../../src/lib/terminology-context";
+import { roleLabel, roleColor } from "../../src/lib/roles";
 
 const APP_VERSION = "1.0.0-alpha";
 
@@ -35,14 +37,6 @@ function capitalize(s: string) {
   if (!s) return "";
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
 }
-
-const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
-  field_agent: { bg: "bg-blue-100 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" },
-  staff: { bg: "bg-purple-100 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" },
-  warehouse_manager: { bg: "bg-orange-100 dark:bg-orange-950/30", text: "text-orange-700 dark:text-orange-400" },
-  manager: { bg: "bg-amber-100 dark:bg-amber-950/30", text: "text-amber-700 dark:text-amber-400" },
-  owner: { bg: "bg-green-100 dark:bg-green-950/30", text: "text-green-700 dark:text-green-400" },
-};
 
 export default function ProfileScreen() {
   const { user, activeCompany, logout } = useAuth();
@@ -167,17 +161,20 @@ export default function ProfileScreen() {
     );
   };
 
-  const roleMeta =
-    ROLE_COLORS[user?.role?.toLowerCase() ?? "field_agent"] ??
-    ROLE_COLORS.field_agent;
-
   return (
     <ScrollView
       className="flex-1 bg-background dark:bg-background-dark"
       showsVerticalScrollIndicator={false}
     >
       {/* ── Hero Header ── */}
-      <View className="bg-primary dark:bg-primary-dark px-6 pb-8 items-center" style={{ paddingTop: topInset }}>
+      <LinearGradient
+        colors={["#0368FE", "#000D3A"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: topInset, alignItems: "center", borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: "hidden" }}
+      >
+        <View style={{ position: "absolute", top: -50, right: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(255,255,255,0.08)" }} />
+        <View style={{ position: "absolute", bottom: -40, left: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(3,168,254,0.16)" }} />
         {/* Avatar */}
         <View className="w-20 h-20 rounded-full bg-white/20 border-4 border-white/30 justify-center items-center mb-4">
           <Text className="text-white font-black text-3xl">
@@ -196,9 +193,9 @@ export default function ProfileScreen() {
         {/* Role + Company */}
         <View className="flex-row gap-2 mt-3 flex-wrap justify-center">
           {user?.role && (
-            <View className="bg-white/15 px-3 py-1.5 rounded-full border border-white/20">
-              <Text className="text-white text-sm font-bold uppercase tracking-wider">
-                {capitalize(user.role)}
+            <View style={{ backgroundColor: "#FFFFFF", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
+              <Text style={{ color: roleColor(user.role), fontSize: 13, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {roleLabel(user.role)}
               </Text>
             </View>
           )}
@@ -211,7 +208,7 @@ export default function ProfileScreen() {
             </View>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       <View className="px-6 pt-6 pb-12">
         {/* ── This Month Stats ── */}
@@ -277,7 +274,7 @@ export default function ProfileScreen() {
           {[
             { label: t("staff")?.includes("कामगार") ? "पूरा नाम" : "Full Name", value: `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "—" },
             { label: t("staff")?.includes("कामगार") ? "ईमेल" : "Email", value: user?.email ?? "—" },
-            { label: t("staff")?.includes("कामगार") ? "पद (Role)" : "Role", value: capitalize(user?.role ?? "—") },
+            { label: t("staff")?.includes("कामगार") ? "पद (Role)" : "Role", value: user?.role ? roleLabel(user.role) : "—" },
             { label: t("staff")?.includes("कामगार") ? "कंपनी" : "Company", value: activeCompany?.name ?? "—" },
           ].map((row, idx, arr) => (
             <View

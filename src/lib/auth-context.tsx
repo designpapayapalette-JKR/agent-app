@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { api, login as apiLogin, logout as apiLogout, fetchMe, hasStoredSession } from "./api";
+import type { UserRole } from "./moduleCategories";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any | null;
-  userRole: string;
+  userRole: UserRole;
   activeCompany: any | null;
   activeBrand: any | null;
   availableBrands: any[];
@@ -13,6 +14,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshBrands: () => Promise<void>;
+  refreshAllData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeBrand, setActiveBrand] = useState<any | null>(null);
   const [availableBrands, setAvailableBrands] = useState<any[]>([]);
 
-  const userRole = user?.role || "field_agent";
+  const userRole = (user?.role as UserRole) || "field_agent";
 
 
   const fetchTenantData = async () => {
@@ -47,6 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to refresh brands:", error);
     }
+  };
+
+  const refreshAllData = async () => {
+    await Promise.all([
+      refreshBrands(),
+    ]);
   };
 
   useEffect(() => {
@@ -129,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshBrands,
+        refreshAllData,
       }}
     >
       {children}

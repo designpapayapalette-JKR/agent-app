@@ -33,7 +33,7 @@ import {
   isTracking,
 } from "../src/lib/location-tracker";
 import { TerminologyProvider } from "../src/lib/terminology-context";
-import { syncQueuedData } from "../src/lib/offlineQueue";
+import { syncQueuedData, syncQueuedSales } from "../src/lib/offlineQueue";
 import { useAppFonts } from "../src/lib/fonts";
 
 // Light-theme only, same as shopkeeper-app — overrides NativeWind's "media"
@@ -48,13 +48,15 @@ function NavigationGuard() {
   const prevAuthenticated = useRef<boolean | null>(null);
   const appState = useRef(AppState.currentState);
 
-  // Sync offline queued attendance/expenses when returning online
+  // Sync offline queued attendance/expenses/sales when returning online
   useEffect(() => {
     if (!isAuthenticated) return;
     syncQueuedData().catch(() => {});
+    syncQueuedSales().catch(() => {});
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (appState.current.match(/inactive|background/) && nextState === "active") {
         syncQueuedData().catch(() => {});
+        syncQueuedSales().catch(() => {});
       }
       appState.current = nextState;
     });

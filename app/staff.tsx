@@ -1,0 +1,702 @@
+import React, { useCallback, useEffect, useState } from "react";
+import {
+ View,
+ Text,
+ FlatList,
+ ActivityIndicator,
+ Pressable,
+ Alert,
+ TextInput,
+ Modal,
+ ScrollView,
+ Platform,
+ Linking,
+ KeyboardAvoidingView,
+ RefreshControl,
+} from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useTheme, Switch } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { api, ApiError } from "../src/lib/api";
+import { useConfirm } from "../src/components/ConfirmDialog";
+import { useTopInset } from "../src/lib/useTopInset";
+import { useBottomInset } from "../src/lib/useBottomInset";
+import { useAuth } from "../src/lib/auth-context";
+import EmptyState from "../src/components/EmptyState";
+
+// This file lives in agent-app ("MMC Agent") — every role in STAFF_ROLES
+// below (Manager, Cashier, Warehouse Manager, Field Agent) is a staff role
+// served by this app, unlike shopkeeper-app's copy of this screen where
+// only Owner/Admin roles apply. So unlike that copy, there's no per-role
+// app split here — everyone gets the same download link.
+const AGENT_APP_DOWNLOAD_URL =
+ "https://github.com/designpapayapalette-JKR/agent-app/releases/download/beta-latest/agent-app-latest.apk";
+
+const STAFF_ROLES = [
+ { id: "manager", name: "Manager" },
+ { id: "staff", name: "Cashier / Biller" },
+ { id: "warehouse_manager", name: "Warehouse Manager" },
+ { id: "field_agent", name: "Field Agent" },
+];
+
+// Employees added without email/password get a placeholder email ending in
+// this domain server-side (see generatePlaceholderEmail() in
+// shopkeeper-api/src/routes/staff.ts) — never a real address, just used
+// here to detect and label "no login access" instead of showing garbage.
+const NO_LOGIN_EMAIL_DOMAIN = "@noapp.internal";
+function hasLoginAccess(email: string) {
+ return !email.toLowerCase().endsWith(NO_LOGIN_EMAIL_DOMAIN);
+}
+
+interface StaffMember {
+ id: string;
+ first_name: string;
+ last_name?: string;
+ name?: string;
+ email: string;
+ phone?: string;
+ role: string;
+}
+
+interface AttendanceRosterRow {
+ user_id: string;
+ status: "present" | "absent" | "half_day" | "leave" | "holiday" | null;
+ check_in: string | null;
+ check_out: string | null;
+}
+
+const ATTENDANCE_STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+ present: { label: "Present", color: "#15803D", bg: "#DCFCE7" },
+ half_day: { label: "Half Day", color: "#B45309", bg: "#FEF3C7" },
+ absent: { label: "Absent", color: "#DC2626", bg: "#FEE2E2" },
+ leave: { label: "On Leave", color: "#2563EB", bg: "#DBEAFE" },
+ holiday: { label: "Holiday", color: "#6B7280", bg: "#F3F4F6" },
+};
+
+function formatCheckTime(iso: string | null): string | null {
+ if (!iso) return null;
+ return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function staffDisplayName(m: StaffMember) {
+ if (m.first_name) return `${m.first_name}${m.last_name ? " " + m.last_name : ""}`;
+ return m.name || m.email;
+}
+
+function randomTempPassword(): string {
+ return Math.random().toString(36).slice(-8) + "!1";
+}
+
+function roleLabel(role: string) {
+ return (
+ { owner: "Owner", manager: "Manager", staff: "Cashier / Biller", field_agent: "Field Agent", warehouse_manager: "Warehouse Manager" }[role] ?? role
+ );
+}
+
+export default function StaffScreen() {
+ const theme = useTheme();
+ const topInset = useTopInset();
+ const bottomInset = useBottomInset();
+ const confirm = useConfirm();
+ const router = useRouter();
+ const { activeCompany } = useAuth();
+
+ const [staff, setStaff] = useState<StaffMember[]>([]);
+ const [attendanceByUser, setAttendanceByUser] = useState<Record<string, AttendanceRosterRow>>({});
+ const [loading, setLoading] = useState(true);
+ const [refreshing, setRefreshing] = useState(false);
+
+ // Today's check-in/out status per employee, shown inline on the roster —
+ // this screen was previously just a contact/CRUD list with no attendance
+ // visibility for the manager's "workforce supervision" duty. See docs/
+ // Deep-Review-and-Dual-Mobile-Apps-Architectural-Plan.md §5.2.
+ const loadAttendance = useCallback(async () => {
+ try {
+ const outletsRes = await api.get<{ data: { id: string }[] }>("/outlets");
+ const outletId = outletsRes.data?.[0]?.id;
+ if (!outletId) return;
+ const today = new Date().toISOString().slice(0, 10);
+ const rosterRes = await api.get<{ data: AttendanceRosterRow[] }>("/attendance/roster", {
+ params: { outletId, date: today },
+ });
+ const byUser: Record<string, AttendanceRosterRow> = {};
+ for (const row of rosterRes.data ?? []) byUser[row.user_id] = row;
+ setAttendanceByUser(byUser);
+ } catch (e) {
+ // Non-fatal — roster endpoint is manager/warehouse_manager/owner only;
+ // if it 403s for any reason the screen still works as a contact list.
+ console.error("Failed to load attendance roster:", e);
+ }
+ }, []);
+
+ // Add Modal
+ const [isAdding, setIsAdding] = useState(false);
+ const [addFirstName, setAddFirstName] = useState("");
+ const [addLastName, setAddLastName] = useState("");
+ const [addEmail, setAddEmail] = useState("");
+ const [addPhone, setAddPhone] = useState("");
+ const [addPassword, setAddPassword] = useState("");
+ // Many employees (warehouse loaders, helpers, delivery staff) never log
+ // into any app — this shop just needs their attendance/salary tracked.
+ const [addNeedsLogin, setAddNeedsLogin] = useState(true);
+ const [addRole, setAddRole] = useState(activeCompany?.default_staff_role || "staff");
+ const [addSubmitting, setAddSubmitting] = useState(false);
+
+ // Edit Modal
+ const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+ const [editFirstName, setEditFirstName] = useState("");
+ const [editLastName, setEditLastName] = useState("");
+ const [editEmail, setEditEmail] = useState("");
+ const [editPhone, setEditPhone] = useState("");
+ const [editRole, setEditRole] = useState("staff");
+ const [editSubmitting, setEditSubmitting] = useState(false);
+
+ const load = useCallback(async () => {
+ setLoading(true);
+ try {
+ const res = await api.get<{ data: StaffMember[] }>("/staff");
+ const list = res.data ?? [];
+ const normalized = list.map((m: any) => {
+ if (m.name && !m.first_name) {
+ const parts = m.name.split(" ");
+ return { ...m, first_name: parts[0] || "", last_name: parts.slice(1).join(" ") || "" };
+ }
+ return m;
+ });
+ setStaff(normalized);
+ } catch (e) {
+ console.error("Failed to load staff:", e);
+ } finally {
+ setLoading(false);
+ }
+ }, []);
+
+ const onRefresh = useCallback(async () => {
+ setRefreshing(true);
+ try { await Promise.all([load(), loadAttendance()]); } finally { setRefreshing(false); }
+ }, [load, loadAttendance]);
+
+ useEffect(() => {
+ load();
+ loadAttendance();
+ }, [load, loadAttendance]);
+
+ const resetAddForm = () => {
+ setAddFirstName("");
+ setAddLastName("");
+ setAddEmail("");
+ setAddPhone("");
+ setAddPassword("");
+ setAddNeedsLogin(true);
+ setAddRole(activeCompany?.default_staff_role || "staff");
+ };
+
+ const closeAdd = async () => {
+ const hasChanges =
+ addFirstName.trim() !== "" ||
+ addLastName.trim() !== "" ||
+ addEmail.trim() !== "" ||
+ addPhone.trim() !== "" ||
+ addPassword.trim() !== "";
+ if (hasChanges) {
+ const ok = await confirm({
+ title: "Discard changes?",
+ message: "You have unsaved changes. Are you sure you want to go back?",
+ confirmLabel: "Discard",
+ destructive: true,
+ });
+ if (!ok) return;
+ }
+ setIsAdding(false);
+ resetAddForm();
+ };
+
+ const handleAdd = async () => {
+ if (!addFirstName.trim()) {
+ Alert.alert("Required Fields", "First name is required.");
+ return;
+ }
+ if (addNeedsLogin && (!addEmail.trim() || !addPassword.trim())) {
+ Alert.alert("Required Fields", "Email and password are required to give this employee login access — or turn that off if they don't need it.");
+ return;
+ }
+ setAddSubmitting(true);
+ try {
+ await api.post("/staff", {
+ first_name: addFirstName.trim(),
+ last_name: addLastName.trim() || undefined,
+ email: addNeedsLogin ? addEmail.trim() : undefined,
+ phone: addPhone.trim() || undefined,
+ password: addNeedsLogin ? addPassword : undefined,
+ role: addRole,
+ });
+ const createdPhone = addPhone.trim();
+ const createdName = `${addFirstName.trim()}${addLastName.trim() ? " " + addLastName.trim() : ""}`;
+ const createdEmail = addEmail.trim();
+ const createdPassword = addPassword;
+ const createdRole = addRole;
+ const createdNeedsLogin = addNeedsLogin;
+ setIsAdding(false);
+ resetAddForm();
+ load();
+
+ if (createdNeedsLogin && createdPhone) {
+ const ok = await confirm({
+ title: "Employee Created",
+ message: `Send ${createdName}'s login to them over WhatsApp now?`,
+ confirmLabel: "Send via WhatsApp",
+ });
+ if (ok) {
+ const message = `Hi ${createdName}! You've been added to ${activeCompany?.name ?? "our team"} on the MMC Agent app.\n\n1. Download the app: ${AGENT_APP_DOWNLOAD_URL}\n2. Log in with:\nEmail: ${createdEmail}\nPassword: ${createdPassword}\n\nPlease change your password after logging in.`;
+ const url = `whatsapp://send?text=${encodeURIComponent(message)}&phone=+91${createdPhone.replace(/\D/g, "")}`;
+ const supported = await Linking.canOpenURL(url);
+ if (supported) await Linking.openURL(url);
+ else Alert.alert("WhatsApp Not Installed", "Could not open WhatsApp on this device.");
+ }
+ } else {
+ Alert.alert("Success", "Employee created successfully.");
+ }
+ } catch (e) {
+ Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to create staff member.");
+ } finally {
+ setAddSubmitting(false);
+ }
+ };
+
+ const startEdit = (member: StaffMember) => {
+ setEditingStaff(member);
+ setEditFirstName(member.first_name || "");
+ setEditLastName(member.last_name || "");
+ setEditEmail(hasLoginAccess(member.email) ? member.email : "");
+ setEditPhone(member.phone || "");
+ setEditRole(member.role === "owner" ? "staff" : member.role);
+ };
+
+ const closeEdit = async () => {
+ const hasChanges =
+ editFirstName !== (editingStaff?.first_name ?? "") ||
+ editLastName !== (editingStaff?.last_name ?? "") ||
+ editEmail !== (editingStaff && hasLoginAccess(editingStaff.email) ? editingStaff.email : "") ||
+ editPhone !== (editingStaff?.phone ?? "") ||
+ editRole !== (editingStaff?.role === "owner" ? "staff" : editingStaff?.role);
+ if (hasChanges) {
+ const ok = await confirm({
+ title: "Discard changes?",
+ message: "You have unsaved changes. Are you sure you want to go back?",
+ confirmLabel: "Discard",
+ destructive: true,
+ });
+ if (!ok) return;
+ }
+ setEditingStaff(null);
+ };
+
+ const handleEditSave = async () => {
+ if (!editingStaff) return;
+ setEditSubmitting(true);
+ try {
+ await api.patch(`/staff/${editingStaff.id}`, {
+ firstName: editFirstName.trim(),
+ lastName: editLastName.trim() || undefined,
+ // Blank means "no change" — can only set a real email here, never clear
+ // one back to no-login (that would also need a password reset, which
+ // doesn't exist yet).
+ email: editEmail.trim() || undefined,
+ phone: editPhone.trim() || undefined,
+ role: editRole,
+ });
+ setEditingStaff(null);
+ load();
+ } catch (e) {
+ Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to save changes.");
+ } finally {
+ setEditSubmitting(false);
+ }
+ };
+
+ const handleDelete = async (member: StaffMember) => {
+ const ok = await confirm({
+ title: `Remove ${staffDisplayName(member)}?`,
+ message:
+ "All their attendance records, salary, and tasks will be permanently removed. This cannot be undone.",
+ confirmLabel: "Remove",
+ destructive: true,
+ });
+ if (!ok) return;
+ try {
+ await api.delete(`/staff/${member.id}`);
+ load();
+ } catch (e) {
+ Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to delete staff member.");
+ }
+ };
+
+ const renderStaffItem = ({ item }: { item: StaffMember }) => {
+ const att = item.role !== "owner" ? attendanceByUser[item.id] : undefined;
+ const statusMeta = att?.status ? ATTENDANCE_STATUS_META[att.status] : null;
+ return (
+ <View className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant mb-3 shadow-sm">
+ <View className="flex-row items-start justify-between">
+ <View className="flex-1 mr-3">
+ <Text className="text-base font-bold text-on-surface ">
+ {staffDisplayName(item)}
+ </Text>
+ <Text className="text-sm text-on-surface-variant mt-0.5">
+ {hasLoginAccess(item.email) ? item.email : "No login access"}
+ </Text>
+ <View className="flex-row items-center flex-wrap mt-2" style={{ gap: 8 }}>
+ <View className="bg-primary/10 px-2.5 py-1 rounded-full">
+ <Text className="text-xs font-bold text-primary ">{roleLabel(item.role)}</Text>
+ </View>
+ {item.role !== "owner" && (
+ <View style={{ backgroundColor: statusMeta?.bg ?? "#F3F4F6", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+ <Text style={{ color: statusMeta?.color ?? "#6B7280", fontSize: 11, fontWeight: "700" }}>
+ {statusMeta ? statusMeta.label : "Not checked in"}
+ {att?.check_in && statusMeta ? ` · ${formatCheckTime(att.check_in)}` : ""}
+ {att?.check_out ? ` – ${formatCheckTime(att.check_out)}` : ""}
+ </Text>
+ </View>
+ )}
+ </View>
+ </View>
+ {item.role !== "owner" && (
+ <View className="flex-row" style={{ gap: 4 }}>
+ <Pressable
+ onPress={() => startEdit(item)}
+ className="w-9 h-9 rounded-lg bg-surface-container items-center justify-center active:opacity-70"
+ >
+ <MaterialCommunityIcons name="pencil" size={16} color={theme.colors.onSurfaceVariant} />
+ </Pressable>
+ <Pressable
+ onPress={() => handleDelete(item)}
+ className="w-9 h-9 rounded-lg bg-red-50 items-center justify-center active:opacity-70"
+ >
+ <MaterialCommunityIcons name="delete-outline" size={16} color={theme.colors.error} />
+ </Pressable>
+ </View>
+ )}
+ </View>
+ </View>
+ );
+ };
+
+ return (
+ <View className="flex-1 bg-background " style={{ paddingTop: topInset }}>
+ {/* Header */}
+ <View className="flex-row items-center justify-between px-6 py-4">
+ <View className="flex-row items-center" style={{ gap: 8 }}>
+ <Pressable onPress={() => router.back()} className="w-9 h-9 items-center justify-center active:opacity-70">
+ <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.onSurfaceVariant} />
+ </Pressable>
+ <Text className="text-xl font-bold text-on-surface ">
+ Staff & Employees
+ </Text>
+ </View>
+ <Pressable
+ onPress={() => {
+ resetAddForm();
+ setIsAdding(true);
+ }}
+ className="bg-primary px-4 py-2.5 rounded-xl flex-row items-center active:opacity-80"
+ style={{ gap: 4 }}
+ >
+ <MaterialCommunityIcons name="plus" size={16} color="white" />
+ <Text className="text-white font-bold text-sm">Add</Text>
+ </Pressable>
+ </View>
+
+ {loading ? (
+ <View className="flex-1 items-center justify-center pb-20">
+ <ActivityIndicator size="large" color={theme.colors.primary} />
+ </View>
+ ) : staff.length === 0 ? (
+ <EmptyState
+ icon="account-group-outline"
+ title="No team members yet"
+ description="Tap the Add button above to invite your first employee."
+ />
+ ) : (
+ <FlatList
+ data={staff}
+ keyExtractor={(item) => item.id}
+ renderItem={renderStaffItem}
+ refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+ contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomInset + 24 }}
+ showsVerticalScrollIndicator={false}
+ />
+ )}
+
+ {/* Add Modal */}
+ <Modal visible={isAdding} animationType="slide" onRequestClose={closeAdd}>
+ <SafeAreaProvider>
+ <KeyboardAvoidingView
+ behavior={Platform.OS === "ios" ? "padding" : undefined}
+ className="flex-1"
+ >
+ <ScrollView
+ className="flex-1 bg-background px-6 pb-10"
+ style={{ paddingTop: topInset }}
+ >
+ <View className="flex-row justify-between items-center mb-6">
+ <Text className="text-2xl font-bold text-on-surface ">
+ New Employee
+ </Text>
+ <Pressable onPress={closeAdd} className="w-11 h-11 items-center justify-center">
+ <MaterialCommunityIcons name="close" size={20} color={theme.colors.onSurfaceVariant} />
+ </Pressable>
+ </View>
+
+ <View className="space-y-4">
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ First Name *
+ </Text>
+ <TextInput
+ value={addFirstName}
+ onChangeText={setAddFirstName}
+ placeholder="e.g. Rajesh"
+ placeholderTextColor="#A0A0A0"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Last Name
+ </Text>
+ <TextInput
+ value={addLastName}
+ onChangeText={setAddLastName}
+ placeholder="e.g. Kumar"
+ placeholderTextColor="#A0A0A0"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Role
+ </Text>
+ <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+ {STAFF_ROLES.map((r) => (
+ <Pressable
+ key={r.id}
+ onPress={() => setAddRole(r.id)}
+ className={`px-4 py-3 rounded-xl border ${
+ addRole === r.id
+ ? "bg-primary border-primary "
+ : "bg-surface-container-lowest border-outline-variant "
+ }`}
+ >
+ <Text
+ className={`text-sm font-bold ${addRole === r.id ? "text-white" : "text-on-surface-variant "}`}
+ >
+ {r.name}
+ </Text>
+ </Pressable>
+ ))}
+ </View>
+ </View>
+
+ <View className="flex-row items-center justify-between py-1">
+ <Text className="text-sm font-semibold text-on-surface flex-1 pr-3">
+ Give this employee login access (mobile/web app)
+ </Text>
+ <Switch value={addNeedsLogin} onValueChange={setAddNeedsLogin} />
+ </View>
+ {!addNeedsLogin && (
+ <Text className="text-xs text-on-surface-variant -mt-2">
+ No email or password needed — they&apos;ll still show up for attendance and salary, they just won&apos;t be able to log in anywhere.
+ </Text>
+ )}
+
+ {addNeedsLogin && (
+ <>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Email *
+ </Text>
+ <TextInput
+ value={addEmail}
+ onChangeText={setAddEmail}
+ placeholder="e.g. rajesh@example.com"
+ placeholderTextColor="#A0A0A0"
+ keyboardType="email-address"
+ autoCapitalize="none"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Phone
+ </Text>
+ <TextInput
+ value={addPhone}
+ onChangeText={setAddPhone}
+ placeholder="e.g. 9876543210"
+ placeholderTextColor="#A0A0A0"
+ keyboardType="phone-pad"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <View className="flex-row items-center justify-between mb-2">
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider">
+ Temporary Password *
+ </Text>
+ <Pressable onPress={() => setAddPassword(randomTempPassword())}>
+ <Text className="text-sm font-bold text-primary ">Auto-Generate</Text>
+ </Pressable>
+ </View>
+ <TextInput
+ value={addPassword}
+ onChangeText={setAddPassword}
+ placeholder="Enter a password"
+ placeholderTextColor="#A0A0A0"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-mono"
+ />
+ </View>
+ </>
+ )}
+ </View>
+
+ <View className="flex-row justify-between mt-10" style={{ marginBottom: bottomInset }}>
+ <Pressable
+ onPress={closeAdd}
+ className="border border-outline-variant py-4 px-6 rounded-xl w-[48%] items-center"
+ >
+ <Text className="text-on-surface-variant font-bold">Cancel</Text>
+ </Pressable>
+ <Pressable
+ onPress={handleAdd}
+ disabled={addSubmitting}
+ className="bg-primary py-4 px-6 rounded-xl w-[48%] items-center"
+ >
+ {addSubmitting ? (
+ <ActivityIndicator color="white" />
+ ) : (
+ <Text className="text-white font-bold">Create Employee</Text>
+ )}
+ </Pressable>
+ </View>
+ </ScrollView>
+ </KeyboardAvoidingView>
+ </SafeAreaProvider>
+ </Modal>
+
+ {/* Edit Modal */}
+ <Modal visible={!!editingStaff} animationType="slide" onRequestClose={closeEdit}>
+ <SafeAreaProvider>
+ <KeyboardAvoidingView
+ behavior={Platform.OS === "ios" ? "padding" : undefined}
+ className="flex-1"
+ >
+ <ScrollView
+ className="flex-1 bg-background px-6 pb-10"
+ style={{ paddingTop: topInset }}
+ >
+ <View className="flex-row justify-between items-center mb-6">
+ <Text className="text-2xl font-bold text-on-surface ">
+ Edit Employee
+ </Text>
+ <Pressable onPress={closeEdit} className="w-11 h-11 items-center justify-center">
+ <MaterialCommunityIcons name="close" size={20} color={theme.colors.onSurfaceVariant} />
+ </Pressable>
+ </View>
+
+ <View className="space-y-4">
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ First Name *
+ </Text>
+ <TextInput
+ value={editFirstName}
+ onChangeText={setEditFirstName}
+ placeholder="First name"
+ placeholderTextColor="#A0A0A0"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Last Name
+ </Text>
+ <TextInput
+ value={editLastName}
+ onChangeText={setEditLastName}
+ placeholder="Last name"
+ placeholderTextColor="#A0A0A0"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ {editingStaff && hasLoginAccess(editingStaff.email) ? "Email *" : "Email (no login yet)"}
+ </Text>
+ <TextInput
+ value={editEmail}
+ onChangeText={setEditEmail}
+ placeholder={editingStaff && hasLoginAccess(editingStaff.email) ? "Email" : "Leave blank to keep no login access"}
+ placeholderTextColor="#A0A0A0"
+ keyboardType="email-address"
+ autoCapitalize="none"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Phone
+ </Text>
+ <TextInput
+ value={editPhone}
+ onChangeText={setEditPhone}
+ placeholder="Phone"
+ placeholderTextColor="#A0A0A0"
+ keyboardType="phone-pad"
+ className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
+ />
+ </View>
+ <View>
+ <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+ Role
+ </Text>
+ <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+ {STAFF_ROLES.map((r) => (
+ <Pressable
+ key={r.id}
+ onPress={() => setEditRole(r.id)}
+ className={`px-4 py-3 rounded-xl border ${
+ editRole === r.id
+ ? "bg-primary border-primary "
+ : "bg-surface-container-lowest border-outline-variant "
+ }`}
+ >
+ <Text
+ className={`text-sm font-bold ${editRole === r.id ? "text-white" : "text-on-surface-variant "}`}
+ >
+ {r.name}
+ </Text>
+ </Pressable>
+ ))}
+ </View>
+ </View>
+ </View>
+
+ <Pressable
+ onPress={handleEditSave}
+ disabled={editSubmitting}
+ className="bg-primary py-4 rounded-xl items-center mt-8"
+ style={{ marginBottom: bottomInset }}
+ >
+ {editSubmitting ? (
+ <ActivityIndicator color="white" />
+ ) : (
+ <Text className="text-white font-bold text-base">Save Changes</Text>
+ )}
+ </Pressable>
+ </ScrollView>
+ </KeyboardAvoidingView>
+ </SafeAreaProvider>
+ </Modal>
+ </View>
+ );
+}

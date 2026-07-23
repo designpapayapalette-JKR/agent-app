@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 
 export interface QueuedAttendance {
   notes: string;
@@ -96,4 +96,70 @@ export async function syncQueuedData(): Promise<void> {
     }
   }
   await saveQueue(EXP_QUEUE_KEY, remainingExps);
+}
+
+// ── Offline sale queue (POS, ported from shopkeeper-app) ────────────────
+// Kept as a distinct queue/key from attendance & expenses above — different
+// payload shape, different sync endpoint, and callers (POS) want to know
+// specifically about queued sales, not a blended count.
+
+const SALE_QUEUE_KEY = "agent_offline_sale_queue";
+
+export interface QueuedSale {
+  id: string; // local-only reference — never a real invoice number
+  queuedAt: string;
+  payload: Record<string, unknown>;
+}
+
+// A sale only ever gets queued here when the checkout request never reached
+// the server at all (a real network failure, not a business-logic error
+// like insufficient stock or a validation failure). No invoice number is
+// ever fabricated client-side — the real one is assigned atomically and
+// sequentially by the server (GST compliance requires no gaps in that
+// sequence); the sale simply isn't "real" yet until it actually syncs.
+export function isNetworkFailure(error: unknown): boolean {
+  return !(error instanceof ApiError);
+}
+
+export async function enqueueSale(payload: Record<string, unknown>): Promise<QueuedSale> {
+  const queue = await getQueue<QueuedSale>(SALE_QUEUE_KEY);
+  const entry: QueuedSale = {
+    id: `offline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    queuedAt: new Date().toISOString(),
+    payload,
+  };
+  queue.push(entry);
+  await saveQueue(SALE_QUEUE_KEY, queue);
+  return entry;
+}
+
+export async function getQueuedSales(): Promise<QueuedSale[]> {
+  return getQueue<QueuedSale>(SALE_QUEUE_KEY);
+}
+
+export async function getQueueCount(): Promise<number> {
+  return (await getQueue<QueuedSale>(SALE_QUEUE_KEY)).length;
+}
+
+// Replays queued sales in the order they were recorded (oldest first).
+export async function syncQueuedSales(): Promise<{ synced: number; remaining: number }> {
+  const queue = await getQueue<QueuedSale>(SALE_QUEUE_KEY);
+  if (queue.length === 0) return { synced: 0, remaining: 0 };
+
+  const stillQueued: QueuedSale[] = [];
+  let synced = 0;
+  for (const entry of queue) {
+    try {
+      await api.post("/pos/checkout", entry.payload);
+      synced++;
+    } catch (error) {
+      if (isNetworkFailure(error)) {
+        stillQueued.push(entry, ...queue.slice(queue.indexOf(entry) + 1));
+        break;
+      }
+      console.error("[offlineQueue] dropping sale that the server rejected:", error);
+    }
+  }
+  await saveQueue(SALE_QUEUE_KEY, stillQueued);
+  return { synced, remaining: stillQueued.length };
 }
