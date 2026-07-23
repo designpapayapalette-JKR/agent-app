@@ -36,7 +36,7 @@
     "expo-status-bar": "~56.0.4",
     "expo-task-manager": "~56.0.20",
     "js-sha256": "^0.11.1",
-    "nativewind": "4.1.23",
+    "nativewind": "4.2.6",
     "qrcode-generator": "^2.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
