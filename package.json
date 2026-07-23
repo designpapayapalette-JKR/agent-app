@@ -33,7 +33,7 @@
     "expo-router": "~56.2.13",
     "expo-secure-store": "~56.0.4",
     "expo-sharing": "~56.0.20",
-    "expo-status-bar": "~56.0.4",
+    "expo-status-bar": "~57.0.1",
     "expo-task-manager": "~56.0.20",
     "js-sha256": "^0.11.1",
     "nativewind": "4.1.23",
