@@ -337,11 +337,11 @@ export default function InvoiceHistoryScreen() {
 
  return (
  <View className="flex-1 bg-background" style={{ paddingTop: topInset }}>
- {/* Header */}
- <View className="flex-row items-center px-4 py-3 border-b border-outline-variant">
- <Pressable onPress={() => router.back()} className="w-9 h-9 rounded-full bg-surface-container items-center justify-center mr-3">
- <MaterialCommunityIcons name="arrow-left" size={20} color="#374151" />
- </Pressable>
+      {/* Header */}
+      <View className="flex-row items-center px-4 py-3 border-b border-outline-variant">
+        <Pressable onPress={() => router.back()} className="w-9 h-9 rounded-full bg-surface-container items-center justify-center mr-3">
+          <MaterialCommunityIcons name="arrow-left" size={20} color={theme.colors.onSurfaceVariant} />
+        </Pressable>
  <Text className="font-headline-md text-on-surface flex-1" style={{ fontSize: 18, fontWeight: "700" }}>
  {activeTab === "sales" ? "Sales" : activeTab === "b2b" ? "B2B Orders" : "Purchases"}
  </Text>
@@ -352,33 +352,37 @@ export default function InvoiceHistoryScreen() {
  </View>
 
  {/* Tabs */}
- <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 py-3" contentContainerStyle={{ gap: 8 }}>
- {TABS.map((tab) => (
+ <View className="flex-row bg-surface-container-high rounded-xl p-1 mx-4 mt-3 mb-1" style={{ gap: 4 }}>
+ {TABS.map((tab) => {
+ const isActive = activeTab === tab.key;
+ return (
  <Pressable
  key={tab.key}
  onPress={() => { setActiveTab(tab.key); setSearchQuery(""); setStatusFilter("All"); }}
- className={`flex-row items-center rounded-xl px-4 py-2.5 ${activeTab === tab.key ? "bg-surface-container-high" : "bg-surface-container"}`}
- style={{ gap: 6 }}
+ className={`flex-1 flex-row items-center justify-center rounded-lg py-2 ${isActive ? "bg-primary" : ""}`}
+ style={{ gap: 5 }}
  >
  <MaterialCommunityIcons
  name={tab.icon}
- size={16}
- color={activeTab === tab.key ? theme.colors.primary : theme.colors.onSurfaceVariant}
+ size={15}
+ color={isActive ? "#FFFFFF" : theme.colors.onSurfaceVariant}
  />
  <Text
+ numberOfLines={1}
  className="font-label-md"
- style={{ color: activeTab === tab.key ? theme.colors.primary : theme.colors.onSurfaceVariant }}
+ style={{ color: isActive ? "#FFFFFF" : theme.colors.onSurfaceVariant }}
  >
  {tab.label}
  </Text>
  </Pressable>
- ))}
- </ScrollView>
+ );
+ })}
+ </View>
 
  {/* Search + Filter */}
  <View className="px-4 pb-3" style={{ gap: 8 }}>
  <View className="flex-row items-center bg-surface-container-lowest rounded-2xl px-4 py-3 border border-outline-variant">
- <MaterialCommunityIcons name="magnify" size={18} color="#6B7280" />
+          <MaterialCommunityIcons name="magnify" size={18} color={theme.colors.onSurfaceVariant} />
  <TextInput
  value={searchQuery}
  onChangeText={setSearchQuery}
@@ -439,7 +443,7 @@ export default function InvoiceHistoryScreen() {
  </Text>
  </View>
  <Pressable onPress={() => setDetailInvoiceId(null)} className="w-9 h-9 rounded-full bg-surface-container items-center justify-center">
- <MaterialCommunityIcons name="close" size={18} color="#374151" />
+          <MaterialCommunityIcons name="close" size={18} color={theme.colors.onSurfaceVariant} />
  </Pressable>
  </View>
  {renderDetailSheet()}
