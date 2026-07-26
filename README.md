@@ -1,6 +1,9 @@
 # agent-app
 
-Field agent-facing app — phone-only, deliberately minimal (Expo + React Native + Expo Router + NativeWind). See the [master build doc](../Shopkeeper-ERP-App-Master-Build-Document.md) §5 and [Stitch Design Brief](../Stitch-Design-Brief.md) Part B (§5B).
+**MMC ERP** field-staff mobile app — branded "MMC Agent" in-app — phone-only,
+deliberately minimal (Expo + React Native + Expo Router + NativeWind). Part
+of the ManageMyCounter (MMC) platform. (Repo name is a pre-rebrand holdover
+— see the workspace root [README](../README.md#a-note-on-naming).)
 
 Hand-scaffolded rather than generated via `create-expo-app`, since Node wasn't available at scaffold time. Before first run:
 
