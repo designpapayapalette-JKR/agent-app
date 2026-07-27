@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
+import { useTheme } from "react-native-paper";
 import { useAuth } from "../../src/lib/auth-context";
 import { api, ApiError } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
@@ -67,13 +68,6 @@ const STATUS_META: Record<
   cancelled: { label: "Cancelled", bg: "bg-gray-100", text: "text-gray-500", icon: "close-circle" },
 };
 
-const ICON_COLOR_BY_STATUS: Record<TaskStatus, string> = {
-  pending: "#B45309",
-  in_progress: "#1D4ED8",
-  done: "#15803D",
-  cancelled: "#6B7280",
-};
-
 const NEXT_STATUS: Partial<Record<TaskStatus, TaskStatus>> = {
   pending: "in_progress",
   in_progress: "done",
@@ -97,6 +91,7 @@ function isOverdue(dueDate?: string, status?: TaskStatus) {
 }
 
 export default function TasksScreen() {
+  const theme = useTheme();
   const { user } = useAuth();
   const topInset = useTopInset();
   const [tasks, setTasks] = useState<AgentTask[]>([]);
@@ -105,6 +100,16 @@ export default function TasksScreen() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<AgentTask | null>(null);
   const [updating, setUpdating] = useState(false);
+
+  const getStatusIconColor = (status: TaskStatus) => {
+    switch (status) {
+      case "pending": return theme.colors.secondary;
+      case "in_progress": return theme.colors.primary;
+      case "done": return theme.colors.primary;
+      case "cancelled": return theme.colors.onSurfaceVariant;
+      default: return theme.colors.onSurfaceVariant;
+    }
+  };
 
   // Visit check-in
   const [showVisitModal, setShowVisitModal] = useState(false);
@@ -242,21 +247,21 @@ export default function TasksScreen() {
       >
         <View className="flex-row items-start justify-between">
           <View className="flex-1 mr-3">
-            <Text className="font-bold text-base text-text-primary dark:text-text-primary-dark" numberOfLines={1}>
+            <Text className="font-bold text-base text-on-surface dark:text-on-surface-dark" numberOfLines={1}>
               {item.title}
             </Text>
             {(item.party?.name || item.partyName) && (
               <View className="flex-row items-center mt-0.5" style={{ gap: 4 }}>
-                <MaterialCommunityIcons name="store" size={13} color="#6B7280" />
-                <Text className="text-sm text-text-secondary">{item.party?.name ?? item.partyName}</Text>
+                <MaterialCommunityIcons name="store" size={13} color={theme.colors.onSurfaceVariant} />
+                <Text className="text-sm text-on-surface-variant">{item.party?.name ?? item.partyName}</Text>
               </View>
             )}
             {item.description ? (
-              <Text className="text-sm text-text-secondary mt-1" numberOfLines={2}>{item.description}</Text>
+              <Text className="text-sm text-on-surface-variant mt-1" numberOfLines={2}>{item.description}</Text>
             ) : null}
           </View>
-          <View className={`px-2.5 py-1.5 rounded-xl flex-row items-center ${meta.bg}`} style={{ gap: 4 }}>
-            <MaterialCommunityIcons name={meta.icon} size={13} color={ICON_COLOR_BY_STATUS[item.status]} />
+            <View className={`px-2.5 py-1.5 rounded-xl flex-row items-center ${meta.bg}`} style={{ gap: 4 }}>
+            <MaterialCommunityIcons name={meta.icon} size={13} color={getStatusIconColor(item.status)} />
             <Text className={`text-sm font-bold ${meta.text}`}>{meta.label}</Text>
           </View>
         </View>
@@ -265,15 +270,15 @@ export default function TasksScreen() {
           <View className="flex-row items-center gap-3">
             {item.dueDate && (
               <View className="flex-row items-center gap-1">
-                <MaterialCommunityIcons name={overdue ? "alert-circle" : "calendar"} size={13} color={overdue ? "#EF4444" : "#6B7280"} />
-                <Text className={`text-sm font-semibold ${overdue ? "text-red-500" : "text-text-secondary"}`}>
+                <MaterialCommunityIcons name={overdue ? "alert-circle" : "calendar"} size={13} color={overdue ? theme.colors.error : theme.colors.onSurfaceVariant} />
+                <Text className={`text-sm font-semibold ${overdue ? "text-red-500" : "text-on-surface-variant"}`}>
                   Due {formatDate(item.dueDate)}{overdue ? " (Overdue)" : ""}
                 </Text>
               </View>
             )}
             {item.visitedAt && (
               <View className="flex-row items-center gap-1">
-                <MaterialCommunityIcons name="map-marker-check" size={13} color="#0368FE" />
+                <MaterialCommunityIcons name="map-marker-check" size={13} color={theme.colors.primary} />
                 <Text className="text-sm text-primary font-semibold">Visited</Text>
               </View>
             )}
@@ -283,7 +288,7 @@ export default function TasksScreen() {
               <Pressable
                 onPress={() => handleCheckIn(item)}
                 disabled={updating}
-                className="bg-amber-500 px-3 py-2 rounded-xl active:opacity-90"
+                className="bg-secondary px-3 py-2 rounded-xl active:opacity-90"
               >
                 <MaterialCommunityIcons name="map-marker" size={14} color="white" />
               </Pressable>
@@ -310,8 +315,8 @@ export default function TasksScreen() {
   return (
     <View className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-6 pb-4" style={{ paddingTop: topInset }}>
-        <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">My Tasks</Text>
-        <Text className="text-sm text-text-secondary font-medium mt-0.5">
+        <Text className="text-2xl font-black text-on-surface dark:text-on-surface-dark">My Tasks</Text>
+        <Text className="text-sm text-on-surface-variant font-medium mt-0.5">
           {tasks.length} total task{tasks.length !== 1 ? "s" : ""} assigned to you
         </Text>
       </View>
@@ -330,9 +335,9 @@ export default function TasksScreen() {
                     active ? "bg-primary dark:bg-primary-dark" : "bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-800"
                   }`}
                 >
-                  <Text className={`text-sm font-bold ${active ? "text-white" : "text-text-primary dark:text-text-primary-dark"}`}>{f.label}</Text>
-                  <View className={`px-2 py-1 rounded-full ${active ? "bg-white/25" : "bg-gray-100 dark:bg-zinc-800"}`}>
-                    <Text className={`text-sm font-black ${active ? "text-white" : "text-text-secondary"}`}>{count}</Text>
+                  <Text className={`text-sm font-bold ${active ? "text-white" : "text-on-surface dark:text-on-surface-dark"}`}>{f.label}</Text>
+                  <View className={`px-2 py-1 rounded-full ${active ? "bg-white/25" : "bg-surface-container-high"}`}>
+                    <Text className={`text-sm font-black ${active ? "text-white" : "text-on-surface-variant"}`}>{count}</Text>
                   </View>
                 </Pressable>
               );
@@ -343,15 +348,15 @@ export default function TasksScreen() {
 
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0368FE" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : filteredTasks.length === 0 ? (
         <View className="flex-1 justify-center items-center px-8">
-          <MaterialCommunityIcons name={activeFilter === "done" ? "party-popper" : "clipboard-text-outline"} size={36} color="#9E9E9E" style={{ marginBottom: 16 }} />
-          <Text className="text-text-primary dark:text-text-primary-dark font-bold text-center text-base">
+          <MaterialCommunityIcons name={activeFilter === "done" ? "party-popper" : "clipboard-text-outline"} size={36} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 16 }} />
+          <Text className="text-on-surface dark:text-on-surface-dark font-bold text-center text-base">
             {activeFilter === "all" ? "No tasks assigned yet" : `No ${activeFilter.replace("_", " ")} tasks`}
           </Text>
-          <Text className="text-text-secondary text-sm text-center mt-1">
+          <Text className="text-on-surface-variant text-sm text-center mt-1">
             {activeFilter === "all" ? "Your manager will assign tasks here." : "Try switching to a different filter."}
           </Text>
         </View>
@@ -372,9 +377,9 @@ export default function TasksScreen() {
         {selectedTask && (
           <ScrollView className="flex-1 bg-background dark:bg-background-dark px-6 pt-8 pb-12">
             <View className="flex-row justify-between items-start mb-6">
-              <Text className="text-xl font-black text-text-primary dark:text-text-primary-dark flex-1 mr-3">Task Detail</Text>
+              <Text className="text-xl font-black text-on-surface dark:text-on-surface-dark flex-1 mr-3">Task Detail</Text>
               <Pressable onPress={() => setSelectedTask(null)} className="w-11 h-11 rounded-full bg-gray-100 dark:bg-zinc-800 justify-center items-center">
-                <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
+                <MaterialCommunityIcons name="close" size={18} color={theme.colors.onSurfaceVariant} />
               </Pressable>
             </View>
 
@@ -382,39 +387,39 @@ export default function TasksScreen() {
               const meta = STATUS_META[selectedTask.status] ?? STATUS_META.pending;
               return (
                 <View className={`self-start px-4 py-2 rounded-2xl mb-5 flex-row items-center ${meta.bg}`} style={{ gap: 6 }}>
-                  <MaterialCommunityIcons name={meta.icon} size={15} color={ICON_COLOR_BY_STATUS[selectedTask.status]} />
+              <MaterialCommunityIcons name={meta.icon} size={15} color={getStatusIconColor(selectedTask.status)} />
                   <Text className={`text-sm font-bold ${meta.text}`}>{meta.label}</Text>
                 </View>
               );
             })()}
 
-            <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark mb-2">{selectedTask.title}</Text>
+            <Text className="text-2xl font-black text-on-surface dark:text-on-surface-dark mb-2">{selectedTask.title}</Text>
 
             <View className="gap-3 mb-6">
               {(selectedTask.party?.name || selectedTask.partyName) && (
                 <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="store" size={18} color="#6B7280" />
+                  <MaterialCommunityIcons name="store" size={18} color={theme.colors.onSurfaceVariant} />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Customer</Text>
-                    <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                    <Text className="text-sm text-on-surface-variant font-semibold uppercase tracking-wider">Customer</Text>
+                    <Text className="text-sm font-bold text-on-surface dark:text-on-surface-dark">
                       {selectedTask.party?.name ?? selectedTask.partyName}
                     </Text>
-                    {selectedTask.party?.phone && <Text className="text-xs text-text-secondary">{selectedTask.party.phone}</Text>}
-                    {selectedTask.party?.address && <Text className="text-xs text-text-secondary">{selectedTask.party.address}</Text>}
+                    {selectedTask.party?.phone && <Text className="text-xs text-on-surface-variant">{selectedTask.party.phone}</Text>}
+                    {selectedTask.party?.address && <Text className="text-xs text-on-surface-variant">{selectedTask.party.address}</Text>}
                   </View>
                 </View>
               )}
               {selectedTask.dueDate && (
                 <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="calendar" size={18} color="#6B7280" />
+                  <MaterialCommunityIcons name="calendar" size={18} color={theme.colors.onSurfaceVariant} />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Due Date</Text>
+                    <Text className="text-sm text-on-surface-variant font-semibold uppercase tracking-wider">Due Date</Text>
                     <View className="flex-row items-center" style={{ gap: 4 }}>
-                      <Text className={`text-sm font-bold ${isOverdue(selectedTask.dueDate, selectedTask.status) ? "text-red-500" : "text-text-primary dark:text-text-primary-dark"}`}>
+                      <Text className={`text-sm font-bold ${isOverdue(selectedTask.dueDate, selectedTask.status) ? "text-red-500" : "text-on-surface dark:text-on-surface-dark"}`}>
                         {formatDate(selectedTask.dueDate)}
                       </Text>
                       {isOverdue(selectedTask.dueDate, selectedTask.status) && (
-                        <><MaterialCommunityIcons name="alert-circle" size={13} color="#EF4444" /><Text className="text-sm font-bold text-red-500">Overdue</Text></>
+                        <><MaterialCommunityIcons name="alert-circle" size={13} color={theme.colors.error} /><Text className="text-sm font-bold text-red-500">Overdue</Text></>
                       )}
                     </View>
                   </View>
@@ -422,18 +427,18 @@ export default function TasksScreen() {
               )}
               {selectedTask.visitedAt && (
                 <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="map-marker-check" size={18} color="#0368FE" />
+                  <MaterialCommunityIcons name="map-marker-check" size={18} color={theme.colors.primary} />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Visited At</Text>
+                    <Text className="text-sm text-on-surface-variant font-semibold uppercase tracking-wider">Visited At</Text>
                     <Text className="text-sm font-bold text-primary">{formatDate(selectedTask.visitedAt)}</Text>
                   </View>
                 </View>
               )}
               {selectedTask.visitOutcome && (
                 <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="check-circle" size={18} color="#15803D" />
+                  <MaterialCommunityIcons name="check-circle" size={18} color={theme.colors.primary} />
                   <View>
-                    <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider">Outcome</Text>
+                    <Text className="text-sm text-on-surface-variant font-semibold uppercase tracking-wider">Outcome</Text>
                     <Text className="text-sm font-bold text-green-700 capitalize">{selectedTask.visitOutcome.replace("_", " ")}</Text>
                   </View>
                 </View>
@@ -442,20 +447,20 @@ export default function TasksScreen() {
 
             {selectedTask.description && (
               <View className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-5">
-                <Text className="text-sm text-text-secondary font-semibold uppercase tracking-wider mb-2">Instructions</Text>
-                <Text className="text-sm text-text-primary dark:text-text-primary-dark leading-relaxed">{selectedTask.description}</Text>
+                <Text className="text-sm text-on-surface-variant font-semibold uppercase tracking-wider mb-2">Instructions</Text>
+                <Text className="text-sm text-on-surface dark:text-on-surface-dark leading-relaxed">{selectedTask.description}</Text>
               </View>
             )}
 
             {selectedTask.visitNotes && (
-              <View className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-900/40 mb-5">
+              <View className="bg-primary-container/30 rounded-2xl p-4 border border-primary/20 mb-5">
                 <Text className="text-sm text-blue-700 font-semibold uppercase tracking-wider mb-1">Visit Notes</Text>
                 <Text className="text-sm text-blue-900 dark:text-blue-300">{selectedTask.visitNotes}</Text>
               </View>
             )}
 
             {selectedTask.notes && (
-              <View className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-4 border border-amber-200 dark:border-amber-900/40 mb-5">
+              <View className="bg-secondary-container rounded-2xl p-4 border border-secondary/30 mb-5">
                 <Text className="text-sm text-amber-700 font-semibold uppercase tracking-wider mb-1">Notes</Text>
                 <Text className="text-sm text-amber-900 dark:text-amber-300">{selectedTask.notes}</Text>
               </View>
@@ -465,7 +470,7 @@ export default function TasksScreen() {
               <Pressable
                 onPress={() => handleCheckIn(selectedTask)}
                 disabled={updating}
-                className="bg-amber-500 py-4 rounded-2xl items-center justify-center shadow-md active:opacity-90 mt-4 flex-row"
+                className="bg-secondary py-4 rounded-2xl items-center justify-center shadow-md active:opacity-90 mt-4 flex-row"
                 style={{ gap: 8 }}
               >
                 {updating ? <ActivityIndicator color="white" /> : (
@@ -492,14 +497,14 @@ export default function TasksScreen() {
             )}
 
             {selectedTask.status === "done" && (
-              <View className="bg-green-50 dark:bg-green-950/20 rounded-2xl p-4 items-center border border-green-200 dark:border-green-900/40 mt-4">
-                <MaterialCommunityIcons name="party-popper" size={24} color="#15803D" style={{ marginBottom: 4 }} />
+              <View className="bg-success/10 rounded-2xl p-4 items-center border border-success/30 mt-4">
+                <MaterialCommunityIcons name="party-popper" size={24} color={theme.colors.primary} style={{ marginBottom: 4 }} />
                 <Text className="text-green-700 dark:text-green-400 font-bold text-base">Task Completed</Text>
               </View>
             )}
 
             <Pressable onPress={() => setSelectedTask(null)} className="border border-gray-200 dark:border-zinc-800 py-4 rounded-2xl items-center mt-3">
-              <Text className="text-text-secondary font-bold text-base">Close</Text>
+              <Text className="text-on-surface-variant font-bold text-base">Close</Text>
             </Pressable>
           </ScrollView>
         )}
@@ -509,20 +514,20 @@ export default function TasksScreen() {
       <Modal visible={showVisitModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowVisitModal(false)}>
         <View className="flex-1 bg-background dark:bg-background-dark px-6 pt-8 pb-12">
           <View className="flex-row justify-between items-start mb-6">
-            <Text className="text-xl font-black text-text-primary dark:text-text-primary-dark flex-1 mr-3">Complete Visit</Text>
+            <Text className="text-xl font-black text-on-surface dark:text-on-surface-dark flex-1 mr-3">Complete Visit</Text>
             <Pressable onPress={() => setShowVisitModal(false)} className="w-11 h-11 rounded-full bg-gray-100 dark:bg-zinc-800 justify-center items-center">
-              <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
+              <MaterialCommunityIcons name="close" size={18} color={theme.colors.onSurfaceVariant} />
             </Pressable>
           </View>
 
           {visitTask && (
             <>
               <View className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-6">
-                <Text className="font-bold text-base text-text-primary">{visitTask.title}</Text>
-                <Text className="text-sm text-text-secondary mt-1">{visitTask.party?.name ?? visitTask.partyName}</Text>
+                <Text className="font-bold text-base text-on-surface">{visitTask.title}</Text>
+                <Text className="text-sm text-on-surface-variant mt-1">{visitTask.party?.name ?? visitTask.partyName}</Text>
               </View>
 
-              <Text className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-3">Visit Outcome *</Text>
+              <Text className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">Visit Outcome *</Text>
               <View className="flex-row flex-wrap gap-2 mb-6">
                 {VISIT_OUTCOMES.map((o) => (
                   <Pressable
@@ -532,17 +537,17 @@ export default function TasksScreen() {
                       selectedOutcome === o.key ? "bg-primary border-primary" : "bg-surface dark:bg-surface-dark border-gray-200 dark:border-zinc-800"
                     }`}
                   >
-                    <MaterialCommunityIcons name={o.icon as MCIName} size={16} color={selectedOutcome === o.key ? "white" : "#6B7280"} />
-                    <Text className={`text-sm font-bold ${selectedOutcome === o.key ? "text-white" : "text-text-primary"}`}>{o.label}</Text>
+                    <MaterialCommunityIcons name={o.icon as MCIName} size={16} color={selectedOutcome === o.key ? "white" : theme.colors.onSurfaceVariant} />
+                    <Text className={`text-sm font-bold ${selectedOutcome === o.key ? "text-white" : "text-on-surface"}`}>{o.label}</Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-2">Visit Notes</Text>
+              <Text className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-2">Visit Notes</Text>
               <TextInput
-                className="bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-text-primary mb-6"
+                className="bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-on-surface mb-6"
                 placeholder="What happened during the visit?"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.colors.onSurfaceVariant}
                 value={visitNotes}
                 onChangeText={setVisitNotes}
                 multiline

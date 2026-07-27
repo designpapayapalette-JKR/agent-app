@@ -136,7 +136,7 @@ export default function ShiftReconciliationScreen() {
  <MaterialCommunityIcons
  name={shift.status === "reconciled" ? "check-circle" : shift.status === "closed" ? "clock-outline" : "circle-outline"}
  size={18}
- color={shift.status === "reconciled" ? "#2E9E5B" : shift.discrepancy && Number(shift.discrepancy) !== 0 ? "#D64545" : "#835400"}
+               color={shift.status === "reconciled" ? theme.colors.primary : shift.discrepancy && Number(shift.discrepancy) !== 0 ? theme.colors.error : theme.colors.tertiary}
  />
  <Text className="font-bold text-on-surface">
  {shift.user?.firstName} {shift.user?.lastName || ""}
@@ -170,12 +170,12 @@ export default function ShiftReconciliationScreen() {
  </View>
 
  {shift.status === "closed" && (
- <Pressable
- onPress={() => handleReconcile(shift.id)}
- className="mt-3 py-2 rounded-xl items-center bg-teal-50"
- >
- <Text className="font-bold text-sm" style={{ color: "#1E8E85" }}>Mark Reconciled</Text>
- </Pressable>
+              <Pressable
+                   onPress={() => handleReconcile(shift.id)}
+                   className="mt-3 py-2 rounded-xl items-center bg-primary/10"
+                 >
+                   <Text className="font-bold text-sm" style={{ color: theme.colors.primary }}>Mark Reconciled</Text>
+                 </Pressable>
  )}
  {shift.status === "reconciled" && (
  <Text className="text-xs text-on-surface-variant mt-2">Reviewed · {timeAgo(shift.reviewedAt)}</Text>
@@ -265,10 +265,9 @@ export default function ShiftReconciliationScreen() {
  ) : (
  <Pressable
  onPress={() => setShowCloseForm(true)}
- className="mt-6 w-full py-3 rounded-xl items-center"
- style={{ backgroundColor: "#1E8E85" }}
- >
- <Text className="font-bold text-white">Close Shift</Text>
+                  className="mt-6 w-full py-3 rounded-xl items-center bg-primary"
+                >
+                  <Text className="font-bold text-white">Close Shift</Text>
  </Pressable>
  )}
  </View>

@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "react-native-paper";
 import { useTerminology } from "../../src/lib/terminology-context";
 import { useAuth } from "../../src/lib/auth-context";
 
@@ -10,16 +11,18 @@ function TabIcon({
   active,
   inactive,
   focused,
+  theme,
 }: {
   active: IconName;
   inactive: IconName;
   focused: boolean;
+  theme: any;
 }) {
   return (
     <MaterialCommunityIcons
       name={focused ? active : inactive}
       size={focused ? 24 : 22}
-      color={focused ? "#0368FE" : "#9E9E9E"}
+      color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
     />
   );
 }
@@ -34,6 +37,7 @@ function TabIcon({
 // being omitted from JSX, so direct navigation to them still works.
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const { t } = useTerminology();
   const { userRole } = useAuth();
 
@@ -46,7 +50,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: theme.colors.surface,
           borderTopWidth: 0,
           elevation: 12,
           shadowColor: "#000",
@@ -57,8 +61,8 @@ export default function TabsLayout() {
           paddingBottom: 8 + insets.bottom,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: "#0368FE",
-        tabBarInactiveTintColor: "#9E9E9E",
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
         tabBarLabelStyle: {
           fontSize: 10.5,
           fontWeight: "700",
@@ -71,7 +75,7 @@ export default function TabsLayout() {
         options={{
           title: t("dashboard"),
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="home" inactive="home-outline" focused={focused} />
+            <TabIcon active="home" inactive="home-outline" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -81,7 +85,7 @@ export default function TabsLayout() {
           title: "POS",
           href: showPos ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="point-of-sale" inactive="point-of-sale" focused={focused} />
+            <TabIcon active="point-of-sale" inactive="point-of-sale" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -91,7 +95,7 @@ export default function TabsLayout() {
           title: t("attendance").split(" ")[0],
           href: isFieldAgent ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="map-marker-check" inactive="map-marker-check-outline" focused={focused} />
+            <TabIcon active="map-marker-check" inactive="map-marker-check-outline" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -101,7 +105,7 @@ export default function TabsLayout() {
           title: t("staff")?.includes("कामगार") ? "कार्य" : "Tasks",
           href: isFieldAgent ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="checkbox-marked-circle" inactive="checkbox-marked-circle-outline" focused={focused} />
+            <TabIcon active="checkbox-marked-circle" inactive="checkbox-marked-circle-outline" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -111,7 +115,7 @@ export default function TabsLayout() {
           title: t("expenses").split(" ")[0],
           href: isFieldAgent ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="receipt" inactive="receipt" focused={focused} />
+            <TabIcon active="receipt" inactive="receipt" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -121,7 +125,7 @@ export default function TabsLayout() {
           title: "Stock",
           href: isWarehouseManager ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="package-variant-closed" inactive="package-variant-closed" focused={focused} />
+            <TabIcon active="package-variant-closed" inactive="package-variant-closed" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -131,7 +135,7 @@ export default function TabsLayout() {
           title: "Transfers",
           href: isWarehouseManager ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="transfer" inactive="transfer" focused={focused} />
+            <TabIcon active="transfer" inactive="transfer" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -141,7 +145,7 @@ export default function TabsLayout() {
           title: "Purchases",
           href: isWarehouseManager ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="truck" inactive="truck" focused={focused} />
+            <TabIcon active="truck" inactive="truck" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -151,7 +155,7 @@ export default function TabsLayout() {
           title: "Challans",
           href: isWarehouseManager ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="clipboard-list" inactive="clipboard-list" focused={focused} />
+            <TabIcon active="clipboard-list" inactive="clipboard-list" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -161,7 +165,7 @@ export default function TabsLayout() {
           title: "Ledger",
           href: null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="account-group" inactive="account-group" focused={focused} />
+            <TabIcon active="account-group" inactive="account-group" focused={focused} theme={theme} />
           ),
         }}
       />
@@ -178,7 +182,7 @@ export default function TabsLayout() {
         options={{
           title: t("staff")?.includes("कामगार") ? "प्रोफ़ाइल" : "Profile",
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="account-circle" inactive="account-circle-outline" focused={focused} />
+            <TabIcon active="account-circle" inactive="account-circle-outline" focused={focused} theme={theme} />
           ),
         }}
       />

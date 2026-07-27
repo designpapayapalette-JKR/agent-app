@@ -8,6 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTheme } from "react-native-paper";
 import { useAuth } from "../../src/lib/auth-context";
 import { api, ApiError } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
@@ -32,6 +33,7 @@ const WORK_LOCATIONS = [
 export default function AttendanceScreen() {
   const { user } = useAuth();
   const { t } = useTerminology();
+  const theme = useTheme();
   const topInset = useTopInset();
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
@@ -165,11 +167,11 @@ export default function AttendanceScreen() {
       {/* Status details */}
       {loading ? (
         <View className="py-20 justify-center items-center">
-          <ActivityIndicator size="large" color="#0368FE" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : isCheckedIn ? (
-        <View className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 p-6 rounded-3xl shadow-sm items-center">
-          <View className="w-12 h-12 bg-green-500 rounded-full justify-center items-center mb-4">
+        <View className="bg-success/10 border border-success/30 p-6 rounded-3xl items-center">
+          <View className="w-12 h-12 bg-success rounded-full justify-center items-center mb-4">
             <MaterialCommunityIcons name="check" size={22} color="#FFFFFF" />
           </View>
           <Text className="text-lg font-bold text-green-800 dark:text-green-400">
@@ -188,7 +190,7 @@ export default function AttendanceScreen() {
           <Pressable
             onPress={handleCheckOut}
             disabled={submitting}
-            className="mt-6 w-full bg-amber-500 py-3.5 rounded-2xl items-center flex-row justify-center"
+            className="mt-6 w-full bg-secondary py-3.5 rounded-2xl items-center flex-row justify-center"
           >
             {submitting ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
@@ -204,8 +206,8 @@ export default function AttendanceScreen() {
         </View>
       ) : (
         <View className="bg-surface dark:bg-surface-dark border border-gray-200 dark:border-zinc-700 p-6 rounded-3xl shadow-lg items-center">
-          <View className="w-12 h-12 bg-red-100 dark:bg-red-950/30 rounded-full justify-center items-center mb-4">
-            <MaterialCommunityIcons name="close" size={22} color="#EF4444" />
+          <View className="w-12 h-12 bg-error/10 rounded-full justify-center items-center mb-4">
+            <MaterialCommunityIcons name="close" size={22} color={theme.colors.error} />
           </View>
           <Text className="text-lg font-bold text-text-primary dark:text-text-primary-dark">
             {t("staff")?.includes("कामगार") ? "चेक-इन नहीं है" : "Not Checked In"}
@@ -233,11 +235,11 @@ export default function AttendanceScreen() {
                 <MaterialCommunityIcons
                   name={loc.icon}
                   size={20}
-                  color={workLocation === loc.key ? "#FFFFFF" : "#6B7280"}
+                  color={workLocation === loc.key ? "#FFFFFF" : theme.colors.onSurfaceVariant}
                 />
                 <Text
                   className={`text-xs font-bold mt-1 text-center ${
-                    workLocation === loc.key ? "text-white" : "text-text-secondary"
+                    workLocation === loc.key ? "text-white" : "text-on-surface-variant"
                   }`}
                 >
                   {t("staff")?.includes("कामगार")

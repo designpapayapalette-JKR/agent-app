@@ -1,12 +1,11 @@
 {
   "expo": {
-    "name": "MMC Agent",
+    "name": "MMC Staff",
     "slug": "agent-app",
     "scheme": "mmcagent",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "backgroundColor": "#fcf9f8",
     "ios": {
       "supportsTablet": false,
@@ -27,13 +26,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow MMC Agent to access your location to track delivery progress and verify duty check-ins."
+          "locationAlwaysAndWhenInUsePermission": "Allow MMC Staff to access your location to track delivery progress and verify duty check-ins."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow MMC Agent to access the camera to photograph receipts and document papers."
+          "cameraPermission": "Allow MMC Staff to access the camera to photograph receipts and document papers."
         }
       ],
       [
@@ -48,18 +47,12 @@
       ]
     ],
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#fcf9f8"
-    },
     "android": {
       "package": "com.papayapalette.agent",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#fcf9f8"
       },
-      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -73,7 +66,8 @@
       ]
     },
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "newArchEnabled": true
     },
     "extra": {
       "router": {},

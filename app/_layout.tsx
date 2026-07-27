@@ -19,7 +19,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View, AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { PaperProvider } from "react-native-paper";
+import { PaperProvider, useTheme } from "react-native-paper";
 import { colorScheme } from "nativewind";
 import type * as LocationTypes from "expo-location";
 import { MMCTheme } from "../src/theme/mmc-theme";
@@ -42,6 +42,7 @@ import { useAppFonts } from "../src/lib/fonts";
 // init hasn't completed (see RootLayout useEffect below).
 
 function NavigationGuard() {
+  const theme = useTheme();
   const { isAuthenticated, isLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -124,7 +125,7 @@ function NavigationGuard() {
       <View
         style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
       >
-        <ActivityIndicator size="large" color="#0368FE" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -133,6 +134,7 @@ function NavigationGuard() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="location-permission" />
     </Stack>
   );
 }

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, FlatList, Pressable, Image, Alert, ActivityIndicator, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTheme } from "react-native-paper";
 import * as ImagePicker from "expo-image-picker";
 import { File, Directory, Paths } from "expo-file-system";
 import { useAuth } from "../src/lib/auth-context";
@@ -28,6 +29,7 @@ function labelFromFilename(filename: string): string {
 export default function DocumentsScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
   const topInset = useTopInset();
   const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,18 +103,18 @@ export default function DocumentsScreen() {
   const QUICK_LABELS = ["Aadhar Card", "PAN Card", "Driving License", "Photo ID"];
 
   return (
-    <View className="flex-1 bg-background dark:bg-background-dark">
+    <View className="flex-1 bg-background">
       <View
-        className="bg-surface dark:bg-surface-dark border-b border-gray-100 dark:border-zinc-800 flex-row items-center px-6 pb-3"
+        className="bg-surface border-b border-outline-variant flex-row items-center px-6 pb-3"
         style={{ gap: 12, paddingTop: topInset }}
       >
         <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center -ml-2">
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#0368FE" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.onSurfaceVariant} />
         </Pressable>
-        <Text className="text-xl font-bold text-text-primary dark:text-text-primary-dark">My Documents</Text>
+        <Text className="text-xl font-bold text-on-surface">My Documents</Text>
       </View>
 
-      <Text className="text-sm text-text-secondary px-6 mt-4">
+      <Text className="text-sm text-on-surface-variant px-6 mt-4">
         Stored only on this device for your own quick access — not visible to your employer.
       </Text>
 
@@ -124,7 +126,7 @@ export default function DocumentsScreen() {
             className="px-4 py-2.5 rounded-xl border border-dashed border-primary flex-row items-center"
             style={{ gap: 6 }}
           >
-            <MaterialCommunityIcons name="camera-plus-outline" size={16} color="#0368FE" />
+            <MaterialCommunityIcons name="camera-plus-outline" size={16} color={theme.colors.primary} />
             <Text className="text-sm font-bold text-primary">{label}</Text>
           </Pressable>
         ))}
@@ -132,7 +134,7 @@ export default function DocumentsScreen() {
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#0368FE" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -143,8 +145,8 @@ export default function DocumentsScreen() {
           columnWrapperStyle={{ gap: 12 }}
           ListEmptyComponent={
             <View className="items-center py-20">
-              <MaterialCommunityIcons name="card-account-details-outline" size={40} color="#9E9E9E" style={{ marginBottom: 12 }} />
-              <Text className="text-text-secondary font-semibold text-sm text-center">
+              <MaterialCommunityIcons name="card-account-details-outline" size={40} color={theme.colors.outline} style={{ marginBottom: 12 }} />
+              <Text className="text-on-surface-variant font-semibold text-sm text-center">
                 No documents saved yet. Tap a quick option above to photograph one.
               </Text>
             </View>
@@ -153,10 +155,10 @@ export default function DocumentsScreen() {
             <Pressable
               onPress={() => setViewingUri(item.uri)}
               onLongPress={() => handleDelete(item)}
-              className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden"
+              className="flex-1 bg-surface rounded-2xl border border-outline-variant overflow-hidden"
             >
               <Image source={{ uri: item.uri }} style={{ width: "100%", height: 120 }} resizeMode="cover" />
-              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark px-3 py-2 capitalize" numberOfLines={1}>
+              <Text className="text-sm font-bold text-on-surface px-3 py-2 capitalize" numberOfLines={1}>
                 {item.label}
               </Text>
             </Pressable>

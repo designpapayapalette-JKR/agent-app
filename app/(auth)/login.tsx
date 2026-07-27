@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTheme } from "react-native-paper";
 import { useAuth } from "../../src/lib/auth-context";
 
 // Bold gradient hero + floating card + gradient CTA — mirrors
@@ -105,6 +106,7 @@ function GradientButton({
 }
 
 export default function LoginScreen() {
+  const theme = useTheme();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -131,7 +133,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-background dark:bg-background-dark"
+      className="flex-1 bg-background"
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <LoginHero />
@@ -147,34 +149,34 @@ export default function LoginScreen() {
               elevation: 8,
             }}
           >
-            <Text className="text-xl font-bold text-text-primary dark:text-text-primary-dark mb-6">
+            <Text className="text-xl font-bold text-on-surface dark:text-on-surface mb-6">
               Sign In to Account
             </Text>
 
-            {error && (
-              <View className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-4 rounded-xl mb-4">
+              {error && (
+              <View className="bg-error-container border border-error rounded-xl p-4 mb-4">
                 <Text className="text-error font-semibold text-base">{error}</Text>
               </View>
             )}
 
             <View className="space-y-4">
               <View>
-                <Text className="text-sm font-semibold text-text-secondary dark:text-text-secondary-dark uppercase tracking-wider mb-2">
+                <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
                   Email Address
                 </Text>
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
                   placeholder="Enter your email"
-                  placeholderTextColor="#A0A0A0"
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  className="bg-background dark:bg-background-dark text-text-primary dark:text-text-primary-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-4 text-base font-medium focus:border-primary dark:focus:border-primary-dark"
+                  className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 text-base font-medium"
                 />
               </View>
 
               <View className="mt-4">
-                <Text className="text-sm font-semibold text-text-secondary dark:text-text-secondary-dark uppercase tracking-wider mb-2">
+                <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
                   Password
                 </Text>
                 <View className="relative justify-center">
@@ -182,10 +184,10 @@ export default function LoginScreen() {
                     value={password}
                     onChangeText={setPassword}
                     placeholder="Enter your password"
-                    placeholderTextColor="#A0A0A0"
+                    placeholderTextColor={theme.colors.onSurfaceVariant}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
-                    className="bg-background dark:bg-background-dark text-text-primary dark:text-text-primary-dark border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-4 pr-12 text-base font-medium focus:border-primary dark:focus:border-primary-dark"
+                    className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 pr-12 text-base font-medium"
                   />
                   <Pressable
                     onPress={() => setShowPassword((v) => !v)}
@@ -194,7 +196,7 @@ export default function LoginScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                   >
-                    <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#6B7280" />
+                    <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.colors.onSurfaceVariant} />
                   </Pressable>
                 </View>
               </View>

@@ -20,6 +20,8 @@ import { useModuleVisibility } from "../../src/lib/useModuleVisibility";
 import { roleLabel, roleColor } from "../../src/lib/roles";
 import KpiCarousel from "../../src/components/KpiCarousel";
 import ModuleGridSection from "../../src/components/ModuleGridSection";
+import { useTheme } from "react-native-paper";
+import { colors as customColors } from "../../src/theme/colors";
 
 function formatRupee(n: number): string {
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -35,6 +37,7 @@ function StaffHome() {
   const router = useRouter();
   const topInset = useTopInset();
   const { getVisibleCategories } = useModuleVisibility(userRole);
+  const theme = useTheme();
 
   const [stats, setStats] = useState({ salesToday: 0, invoicesToday: 0, cashTotal: 0, upiTotal: 0 });
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -74,7 +77,7 @@ function StaffHome() {
   const visibleCategories = getVisibleCategories();
 
   if (loading) {
-    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#0368FE" /></View>;
+    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
   }
 
   return (
@@ -86,7 +89,7 @@ function StaffHome() {
       {/* Gradient hero — matches login screen's visual language
           (feedback_ui_visual_quality.md). */}
       <LinearGradient
-        colors={["#0368FE", "#000D3A"]}
+        colors={[theme.colors.primary, "#000D3A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -127,16 +130,16 @@ function StaffHome() {
 
       <KpiCarousel
         items={[
-          { value: formatRupee(stats.salesToday), label: "Today's Sales", color: "#0368FE", icon: "cash" },
+          { value: formatRupee(stats.salesToday), label: "Today's Sales", color: theme.colors.primary, icon: "cash" },
           { value: String(stats.invoicesToday), label: "Bills", color: "#375DFB", icon: "receipt" },
           ...(isWarehouse
             ? [
-                { value: String(lowStockCount), label: "Low Stock", color: lowStockCount > 0 ? "#D64545" : "#6B7280", icon: "package-variant-closed" },
-                { value: String(pendingTransferCount), label: "Transfers", color: "#835400", icon: "transfer" },
+                { value: String(lowStockCount), label: "Low Stock", color: lowStockCount > 0 ? theme.colors.error : theme.colors.onSurfaceVariant, icon: "package-variant-closed" },
+                { value: String(pendingTransferCount), label: "Transfers", color: theme.colors.secondary, icon: "transfer" },
               ]
             : [
-                { value: formatRupee(stats.cashTotal), label: "Cash", color: "#2E9E5B", icon: "cash-multiple" },
-                { value: formatRupee(stats.upiTotal), label: "UPI", color: "#0368FE", icon: "qrcode" },
+                { value: formatRupee(stats.cashTotal), label: "Cash", color: customColors.success, icon: "cash-multiple" },
+                { value: formatRupee(stats.upiTotal), label: "UPI", color: theme.colors.primary, icon: "qrcode" },
               ]),
         ]}
       />
@@ -146,7 +149,7 @@ function StaffHome() {
         <View className="mx-5 mb-4">
           <Pressable onPress={() => router.push("/pos" as any)} className="active:opacity-90">
             <LinearGradient
-              colors={["#0368FE", "#03A8FE"]}
+              colors={[theme.colors.primary, customColors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
@@ -156,7 +159,7 @@ function StaffHome() {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                shadowColor: "#0368FE",
+                shadowColor: theme.colors.primary,
                 shadowOffset: { width: 0, height: 6 },
                 shadowOpacity: 0.3,
                 shadowRadius: 12,
@@ -231,6 +234,7 @@ function FieldAgentHome() {
   const { t } = useTerminology();
   const router = useRouter();
   const topInset = useTopInset();
+  const theme = useTheme();
 
   const [stats, setStats] = useState<DashboardStats>({
     isCheckedInToday: false,
@@ -369,7 +373,7 @@ function FieldAgentHome() {
   if (loading) {
     return (
       <View className="flex-1 bg-background dark:bg-background-dark justify-center items-center">
-        <ActivityIndicator size="large" color="#0368FE" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text className="text-text-secondary mt-3 text-sm font-medium">
           Loading your dashboard…
         </Text>
@@ -387,7 +391,7 @@ function FieldAgentHome() {
     >
       {/* ── Header ── */}
       <LinearGradient
-        colors={["#0368FE", "#000D3A"]}
+        colors={[theme.colors.primary, "#000D3A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: topInset, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: "hidden" }}
@@ -466,7 +470,7 @@ function FieldAgentHome() {
         {pendingSyncCount > 0 && (
           <View className="mb-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 mr-3" style={{ gap: 8 }}>
-              <MaterialCommunityIcons name="cloud-sync" size={20} color="#B45309" />
+              <MaterialCommunityIcons name="cloud-sync" size={20} color={theme.colors.secondary} />
               <View className="flex-1">
                 <Text className="text-amber-800 dark:text-amber-400 font-bold text-sm">
                   {t("staff")?.includes("कामगार") ? "ऑफ़लाइन डेटा सिंक करना बाकी है" : "Offline Data Pending"}
@@ -503,7 +507,7 @@ function FieldAgentHome() {
 
         {/* ── Stats Row ── */}
         <View className="flex-row gap-3 mb-6">
-          <View className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
+          <View className="flex-1 bg-surface rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
             <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">
               {stats.pendingTasksCount}
             </Text>
@@ -511,7 +515,7 @@ function FieldAgentHome() {
               {t("staff")?.includes("कामगार") ? "लंबित कार्य" : "Pending Tasks"}
             </Text>
           </View>
-          <View className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
+          <View className="flex-1 bg-surface rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
             <Text className="text-2xl font-black text-text-primary dark:text-text-primary-dark">
               {stats.pendingExpensesCount}
             </Text>
@@ -519,7 +523,7 @@ function FieldAgentHome() {
               {t("expenses")?.includes("खर्चे") ? "लंबित खर्चे" : "Expenses Pending"}
             </Text>
           </View>
-          <View className="flex-1 bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
+          <View className="flex-1 bg-surface rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm items-center">
             <Text className="text-lg font-black text-text-primary dark:text-text-primary-dark" numberOfLines={1}>
               ₹{stats.thisMonthExpenseTotal >= 1000
                 ? `${(stats.thisMonthExpenseTotal / 1000).toFixed(1)}k`
@@ -540,10 +544,10 @@ function FieldAgentHome() {
             <Pressable
               key={action.id}
               onPress={() => router.push(action.route)}
-              className="bg-surface dark:bg-surface-dark border border-gray-100 dark:border-zinc-800 rounded-2xl p-5 items-center shadow-sm active:opacity-80"
+              className="bg-surface border border-gray-100 dark:border-zinc-800 rounded-2xl p-5 items-center shadow-sm active:opacity-80"
               style={{ width: "30%" }}
             >
-              <MaterialCommunityIcons name={action.icon} size={36} color="#0368FE" style={{ marginBottom: 8 }} />
+              <MaterialCommunityIcons name={action.icon} size={36} color={theme.colors.primary} style={{ marginBottom: 8 }} />
               <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark text-center">
                 {action.id === "attendance" && (t("staff")?.includes("कामगार") ? "हाजिरी (Check In)" : "Check In")}
                 {action.id === "expenses" && (t("expenses")?.includes("खर्चे") ? "खर्च दर्ज करें" : "Log Expense")}
@@ -559,7 +563,7 @@ function FieldAgentHome() {
             <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
               {t("staff")?.includes("कामगार") ? "मेरा प्रदर्शन (This Month)" : "My Performance This Month"}
             </Text>
-            <View className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-6">
+            <View className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 mb-6">
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-text-primary font-bold text-base">Tasks Completed</Text>
                 <Text className="text-primary font-black text-xl">{performance.completed}</Text>
@@ -586,8 +590,8 @@ function FieldAgentHome() {
         </Text>
 
         {recentActivity.length === 0 ? (
-          <View className="bg-surface dark:bg-surface-dark rounded-2xl p-8 border border-gray-100 dark:border-zinc-800 items-center">
-            <MaterialCommunityIcons name="clipboard-text-outline" size={30} color="#9E9E9E" style={{ marginBottom: 8 }} />
+          <View className="bg-surface rounded-2xl p-8 border border-gray-100 dark:border-zinc-800 items-center">
+            <MaterialCommunityIcons name="clipboard-text-outline" size={30} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
             <Text className="text-text-secondary font-semibold text-base text-center">
               {t("staff")?.includes("कामगार")
                 ? "कोई हालिया गतिविधि नहीं है।\nशुरुआत करने के लिए चेक-इन करें।"
@@ -599,10 +603,10 @@ function FieldAgentHome() {
             {recentActivity.map((item) => (
               <View
                 key={item.id}
-                className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 flex-row items-start shadow-sm"
+                className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 flex-row items-start shadow-sm"
               >
                 <View className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-zinc-800 justify-center items-center mr-3 mt-0.5">
-                  <MaterialCommunityIcons name={activityIcons[item.type]} size={18} color="#6B7280" />
+                  <MaterialCommunityIcons name={activityIcons[item.type]} size={18} color={theme.colors.onSurfaceVariant} />
                 </View>
                 <View className="flex-1 mr-2">
                   <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark">

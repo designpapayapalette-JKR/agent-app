@@ -13,6 +13,7 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTheme } from "react-native-paper";
 import { useAuth } from "../../src/lib/auth-context";
 import * as ImagePicker from "expo-image-picker";
 import { api, ApiError, uploadDocument } from "../../src/lib/api";
@@ -36,6 +37,7 @@ export default function ExpensesScreen() {
   const { t } = useTerminology();
   const topInset = useTopInset();
   const bottomInset = useBottomInset();
+  const theme = useTheme();
 
   // Lists
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -200,7 +202,7 @@ export default function ExpensesScreen() {
       {/* List of Claims */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0368FE" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : expenses.length === 0 ? (
         <View className="flex-1 justify-center items-center py-20">
@@ -215,8 +217,8 @@ export default function ExpensesScreen() {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             let statusColor = "bg-gray-100 text-gray-700";
-            if (item.status === "approved" || item.status === "reimbursed") statusColor = "bg-green-50 text-green-600 dark:bg-green-950/20";
-            else if (item.status === "rejected") statusColor = "bg-red-50 text-red-600 dark:bg-red-950/20";
+            if (item.status === "approved" || item.status === "reimbursed") statusColor = "bg-green-50 text-green-600";
+            else if (item.status === "rejected") statusColor = "bg-red-50 text-red-600";
 
             return (
               <View className="bg-surface dark:bg-surface-dark p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 mb-3.5 shadow-sm">
@@ -239,7 +241,7 @@ export default function ExpensesScreen() {
                     </Text>
                     {item.attachment && (
                       <View className="flex-row items-center mt-1" style={{ gap: 4 }}>
-                        <MaterialCommunityIcons name="paperclip" size={14} color="#0368FE" />
+                        <MaterialCommunityIcons name="paperclip" size={14} color={theme.colors.primary} />
                         <Text className="text-sm text-primary font-bold">
                           receipt_slip.jpg
                         </Text>
@@ -281,7 +283,7 @@ export default function ExpensesScreen() {
               {t("expenses")?.includes("खर्चे") ? "नया खर्च दर्ज करें" : "Log Expense Claim"}
             </Text>
             <Pressable onPress={closeExpenseModal} className="w-11 h-11 items-center justify-center">
-              <MaterialCommunityIcons name="close" size={20} color="#6B7280" />
+              <MaterialCommunityIcons name="close" size={20} color={theme.colors.onSurfaceVariant} />
             </Pressable>
           </View>
 

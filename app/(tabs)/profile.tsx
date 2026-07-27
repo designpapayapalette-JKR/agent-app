@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useTheme } from "react-native-paper";
 import { useAuth } from "../../src/lib/auth-context";
 import { api } from "../../src/lib/api";
 import { useTopInset } from "../../src/lib/useTopInset";
@@ -44,6 +45,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const topInset = useTopInset();
+  const theme = useTheme();
   const [stats, setStats] = useState<MonthlyStats>({
     daysPresent: 0,
     expensesSubmitted: 0,
@@ -168,7 +170,7 @@ export default function ProfileScreen() {
     >
       {/* ── Hero Header ── */}
       <LinearGradient
-        colors={["#0368FE", "#000D3A"]}
+        colors={[theme.colors.primary, "#000D3A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: topInset, alignItems: "center", borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: "hidden" }}
@@ -218,7 +220,7 @@ export default function ProfileScreen() {
 
         {loadingStats ? (
           <View className="bg-surface dark:bg-surface-dark rounded-2xl p-8 border border-gray-100 dark:border-zinc-800 items-center mb-6">
-            <ActivityIndicator size="small" color="#0368FE" />
+            <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
         ) : (
           <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
@@ -305,24 +307,24 @@ export default function ProfileScreen() {
             className="px-4 py-3.5 flex-row items-center justify-between border-b border-gray-100 dark:border-zinc-800"
           >
             <View className="flex-row items-center" style={{ gap: 10 }}>
-              <MaterialCommunityIcons name="cash-multiple" size={18} color="#0368FE" />
+              <MaterialCommunityIcons name="cash-multiple" size={18} color={theme.colors.primary} />
               <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
                 {t("payroll")}
               </Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={18} color="#9E9E9E" />
+            <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.onSurfaceVariant} />
           </Pressable>
           <Pressable
             onPress={() => router.push("/documents" as any)}
             className="px-4 py-3.5 flex-row items-center justify-between"
           >
             <View className="flex-row items-center" style={{ gap: 10 }}>
-              <MaterialCommunityIcons name="card-account-details-outline" size={18} color="#0368FE" />
+              <MaterialCommunityIcons name="card-account-details-outline" size={18} color={theme.colors.primary} />
               <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
                 {t("scannedDocs")}
               </Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={18} color="#9E9E9E" />
+            <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.onSurfaceVariant} />
           </Pressable>
         </View>
 
@@ -391,10 +393,10 @@ export default function ProfileScreen() {
           className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl py-4 items-center flex-row justify-center gap-2 active:opacity-80"
         >
           {loggingOut ? (
-            <ActivityIndicator size="small" color="#D64545" />
+            <ActivityIndicator size="small" color={theme.colors.error} />
           ) : (
             <>
-              <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
+              <MaterialCommunityIcons name="logout" size={20} color={theme.colors.error} />
               <Text className="text-red-600 dark:text-red-400 font-bold text-lg">
                 {t("staff")?.includes("कामगार") ? "लॉग आउट करें" : "Sign Out"}
               </Text>
@@ -409,10 +411,10 @@ export default function ProfileScreen() {
           className="mt-3 py-3 items-center flex-row justify-center gap-2 active:opacity-70"
         >
           {deletingAccount ? (
-            <ActivityIndicator size="small" color="#D64545" />
+            <ActivityIndicator size="small" color={theme.colors.error} />
           ) : (
             <>
-              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
+              <MaterialCommunityIcons name="trash-can-outline" size={16} color={theme.colors.error} />
               <Text className="text-red-600 dark:text-red-400 font-semibold text-sm">
                 {t("staff")?.includes("कामगार") ? "मेरा खाता हटाएं" : "Delete My Account"}
               </Text>
