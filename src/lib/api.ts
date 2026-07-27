@@ -52,19 +52,30 @@ async function refreshAccessToken(): Promise<string | null> {
     const auth = await getAuthData();
     if (!auth?.refreshToken) return null;
 
-    const res = await fetch(`${apiUrl}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken: auth.refreshToken }),
-    });
-    if (!res.ok) {
-      await setAuthData(null);
+    try {
+      const res = await fetch(`${apiUrl}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: auth.refreshToken }),
+      });
+      // 401 is the server's ONLY status for "this refresh token is
+      // genuinely dead" (not found, expired past its 7-day TTL, reuse-
+      // detected/theft, or the user no longer exists — see shopkeeper-
+      // api's POST /auth/refresh). Anything else (a network error below,
+      // a stray 5xx, a malformed body) is transient and must NOT clear
+      // the stored session.
+      if (res.status === 401) {
+        await setAuthData(null);
+        return null;
+      }
+      if (!res.ok) return null;
+      const json = await res.json();
+      const updated: AuthData = { ...auth, accessToken: json.accessToken, expiresAt: json.expiresAt };
+      await setAuthData(updated);
+      return updated.accessToken;
+    } catch {
       return null;
     }
-    const json = await res.json();
-    const updated: AuthData = { ...auth, accessToken: json.accessToken, expiresAt: json.expiresAt };
-    await setAuthData(updated);
-    return updated.accessToken;
   })();
 
   try {
@@ -112,13 +123,31 @@ async function request<T = unknown>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     method,
     // App code writes snake_case (matching the old Directus field names) —
     // convert to camelCase for this server.
     body: body !== undefined ? JSON.stringify(toCamelCase(body)) : undefined,
     headers,
   });
+
+  // A live 401 mid-session used to throw straight through with no retry —
+  // unlike shopkeeper-app, which already refreshes-and-retries once. A
+  // token that's stale by a few seconds (missed the proactive ~60s-before-
+  // expiry refresh window in getValidAccessToken) would fail immediately
+  // instead of just quietly refreshing, which looked like a random logout
+  // for no real reason.
+  if (!options.skipAuth && res.status === 401) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      headers.Authorization = `Bearer ${refreshedToken}`;
+      res = await fetch(url, {
+        method,
+        body: body !== undefined ? JSON.stringify(toCamelCase(body)) : undefined,
+        headers,
+      });
+    }
+  }
 
   const ct = res.headers.get("content-type") || "";
   let json: any = null;
@@ -188,14 +217,48 @@ export async function logout(): Promise<void> {
   await setAuthData(null);
 }
 
-export async function fetchMe(): Promise<any | null> {
-  const auth = await getAuthData();
-  if (!auth) return null;
+const LAST_USER_KEY = "shopkeeper_last_user";
+
+// Cached alongside the tokens so a transient fetchMe() failure (see below)
+// can still render the app with the last-known profile instead of forcing
+// a login screen — the whole point of this cache is to make "no logout
+// without manual action" actually achievable on a cold boot with a flaky
+// connection, not just "don't clear the tokens."
+async function getCachedUser(): Promise<any | null> {
   try {
-    const json: any = await request<any>("GET", "/auth/me");
-    return json.user;
+    const raw = await SecureStore.getItemAsync(LAST_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
+  }
+}
+
+async function setCachedUser(user: unknown): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(LAST_USER_KEY, JSON.stringify(user));
+  } catch {
+    // best-effort
+  }
+}
+
+export type FetchMeResult = { status: "ok"; user: any } | { status: "unauthenticated" } | { status: "transient"; cachedUser: any | null };
+
+export async function fetchMe(): Promise<FetchMeResult> {
+  const auth = await getAuthData();
+  if (!auth) return { status: "unauthenticated" };
+  try {
+    const json: any = await request<any>("GET", "/auth/me");
+    await setCachedUser(json.user);
+    return { status: "ok", user: json.user };
+  } catch (e) {
+    // A real 401 here means request()'s own reactive refresh-and-retry
+    // already tried once and the server confirmed the session is
+    // genuinely dead — anything else (network error, 5xx, timeout) is
+    // transient and must not be treated as "logged out."
+    if (e instanceof ApiError && e.status === 401) {
+      return { status: "unauthenticated" };
+    }
+    return { status: "transient", cachedUser: await getCachedUser() };
   }
 }
 
