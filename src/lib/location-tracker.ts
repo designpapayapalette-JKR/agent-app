@@ -65,9 +65,51 @@ const DEFAULT_PING_DISTANCE_M = 50;
 let _userId: string | null = null;
 let _companyId: string | null = null;
 let _isTracking = false;
+let _currentIntervalMs = DEFAULT_PING_INTERVAL_MS;
+let _currentDistanceM = DEFAULT_PING_DISTANCE_M;
+let _lastSettingsFetch = 0;
+
+const SETTINGS_REFRESH_MS = 300_000; // refresh company settings every 5 min
 
 export function isTracking(): boolean {
   return _isTracking;
+}
+
+async function refreshSettings(): Promise<void> {
+  try {
+    const res = await api.get<{ data: { agentLocationPingIntervalSec?: number; agentLocationPingDistanceM?: number } }>("/companies/me");
+    _lastSettingsFetch = Date.now();
+    const newIntervalMs = (res?.data?.agentLocationPingIntervalSec ?? DEFAULT_PING_INTERVAL_MS / 1000) * 1000;
+    const newDistanceM = res?.data?.agentLocationPingDistanceM ?? DEFAULT_PING_DISTANCE_M;
+    if (newIntervalMs !== _currentIntervalMs || newDistanceM !== _currentDistanceM) {
+      _currentIntervalMs = newIntervalMs;
+      _currentDistanceM = newDistanceM;
+      await restartTrackingWithNewSettings();
+    }
+  } catch {
+    console.warn("[LocationTracker] Settings refresh failed, keeping current values.");
+  }
+}
+
+async function restartTrackingWithNewSettings(): Promise<void> {
+  const Location = safeRequireExpoLocation();
+  if (!Location || !_isTracking) return;
+  try {
+    await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => {});
+    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      accuracy: Location.Accuracy.Balanced,
+      timeInterval: _currentIntervalMs,
+      distanceInterval: _currentDistanceM,
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: "MMC Agent",
+        notificationBody: "Location tracking is active while on duty.",
+        notificationColor: "#0368FE",
+      },
+    });
+  } catch (e) {
+    console.error("[LocationTracker] Failed to restart with new settings:", e);
+  }
 }
 
 const TaskManager = safeRequireExpoTaskManager();
@@ -81,6 +123,13 @@ if (TaskManager) {
       return;
     }
     if (!data) return;
+
+    // Periodically refresh tracking settings from the server so a company
+    // can change ping interval/distance on the web dashboard without
+    // requiring an app restart or login cycle.
+    if (Date.now() - _lastSettingsFetch > SETTINGS_REFRESH_MS) {
+      refreshSettings();
+    }
 
     const { locations } = data as { locations: LocationTypes.LocationObject[] };
     if (!locations?.length) return;
@@ -156,12 +205,13 @@ export async function startTracking(
     // 4. Pull the company's configured ping frequency (Settings > Field
     // Agent App on web) — falls back to the defaults above if the request
     // fails, so a network hiccup at login never blocks tracking entirely.
-    let pingIntervalMs = DEFAULT_PING_INTERVAL_MS;
-    let pingDistanceM = DEFAULT_PING_DISTANCE_M;
+    _currentIntervalMs = DEFAULT_PING_INTERVAL_MS;
+    _currentDistanceM = DEFAULT_PING_DISTANCE_M;
     try {
       const res = await api.get<{ data: { agentLocationPingIntervalSec?: number; agentLocationPingDistanceM?: number } }>("/companies/me");
-      if (res?.data?.agentLocationPingIntervalSec) pingIntervalMs = res.data.agentLocationPingIntervalSec * 1000;
-      if (res?.data?.agentLocationPingDistanceM) pingDistanceM = res.data.agentLocationPingDistanceM;
+      _lastSettingsFetch = Date.now();
+      if (res?.data?.agentLocationPingIntervalSec) _currentIntervalMs = res.data.agentLocationPingIntervalSec * 1000;
+      if (res?.data?.agentLocationPingDistanceM) _currentDistanceM = res.data.agentLocationPingDistanceM;
     } catch (e) {
       console.warn("[LocationTracker] Failed to fetch tracking settings, using defaults:", e);
     }
@@ -169,8 +219,8 @@ export async function startTracking(
     // 5. Start background updates
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.Balanced,
-      timeInterval: pingIntervalMs,
-      distanceInterval: pingDistanceM,
+      timeInterval: _currentIntervalMs,
+      distanceInterval: _currentDistanceM,
       showsBackgroundLocationIndicator: true, // iOS: shows the blue bar
       foregroundService: {
         // Android: keeps the task alive

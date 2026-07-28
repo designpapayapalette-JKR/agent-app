@@ -315,6 +315,18 @@ export default function ProfileScreen() {
             <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.onSurfaceVariant} />
           </Pressable>
           <Pressable
+            onPress={() => router.push("/employee-advances" as any)}
+            className="px-4 py-3.5 flex-row items-center justify-between border-b border-gray-100 dark:border-zinc-800"
+          >
+            <View className="flex-row items-center" style={{ gap: 10 }}>
+              <MaterialCommunityIcons name="currency-inr" size={18} color={theme.colors.primary} />
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                Employee Advances
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.onSurfaceVariant} />
+          </Pressable>
+          <Pressable
             onPress={() => router.push("/documents" as any)}
             className="px-4 py-3.5 flex-row items-center justify-between"
           >

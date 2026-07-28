@@ -61,10 +61,10 @@ function LoginHero() {
         />
       </View>
       <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "800", letterSpacing: 0.2 }}>
-        ManageMyCounter
+        MMC Staff
       </Text>
       <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 13, fontWeight: "600", marginTop: 4 }}>
-        Employee Companion App
+        For Staff & Field Agents
       </Text>
     </LinearGradient>
   );

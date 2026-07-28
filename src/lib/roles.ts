@@ -12,6 +12,8 @@ export const ROLE_LABELS: Record<string, string> = {
  staff: "Cashier / Biller",
  warehouse_manager: "Warehouse Manager",
  field_agent: "Field Agent",
+ general_staff: "General Staff",
+ peon: "Peon / Helper",
 };
 
 export const ROLE_COLORS: Record<string, string> = {
@@ -20,6 +22,8 @@ export const ROLE_COLORS: Record<string, string> = {
  staff: "#10B981",
  warehouse_manager: "#F97316",
  field_agent: "#0368FE",
+ general_staff: "#7C3AED",
+ peon: "#D97706",
 };
 
 export function roleLabel(role: UserRole | string | null | undefined): string {

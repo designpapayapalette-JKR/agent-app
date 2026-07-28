@@ -1,4 +1,4 @@
-export type UserRole = "owner" | "manager" | "staff" | "warehouse_manager" | "field_agent";
+export type UserRole = "owner" | "manager" | "staff" | "warehouse_manager" | "field_agent" | "general_staff" | "peon";
 
 export interface ModuleItem {
  key: string;
@@ -107,10 +107,10 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
 export const ALL_MODULES = [
  "pos", "history", "held-bills", "returns", "b2b", "estimates", "sales-orders",
  "inventory", "categories", "barcodes", "reorder-suggestions",
- "purchases", "purchase-orders", "warehouse", "challans",
- "ledger", "payments", "expenses",
- "staff", "shift-reconciliation",
- "printer-settings",
+  "purchases", "purchase-orders", "warehouse", "challans",
+  "ledger", "payments", "expenses",
+  "staff", "shift-reconciliation", "employee-advances",
+  "printer-settings",
 ];
 
 // Approval-ceiling matrix from the Deep Review doc §4/§5 (Cashier: POS +
@@ -127,12 +127,22 @@ export const ROLE_MODULES: Record<UserRole, string[]> = {
  "staff", "shift-reconciliation",
  "printer-settings",
  ],
- staff: [
- "pos", "history", "held-bills", "returns",
- "ledger", "payments",
- "shift-reconciliation",
- "printer-settings",
- ],
+  staff: [
+  "pos", "history", "held-bills", "returns",
+  "ledger", "payments",
+  "shift-reconciliation",
+  "printer-settings",
+  "employee-advances",
+  ],
+  general_staff: [
+  "pos", "history",
+  "attendance",
+  "employee-advances",
+  ],
+  peon: [
+  "attendance",
+  "employee-advances",
+  ],
  warehouse_manager: [
  "inventory", "categories", "barcodes", "reorder-suggestions",
  "purchases", "purchase-orders", "warehouse", "challans",
