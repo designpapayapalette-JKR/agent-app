@@ -24,6 +24,7 @@ import { colorScheme } from "nativewind";
 import type * as LocationTypes from "expo-location";
 import { MMCTheme } from "../src/theme/mmc-theme";
 import { ConfirmDialogProvider } from "../src/components/ConfirmDialog";
+import OfflineBanner from "../src/components/OfflineBanner";
 import { startConnectivityMonitoring } from "../src/lib/connectivity";
 import { AuthProvider, useAuth } from "../src/lib/auth-context";
 import { safeRequireExpoLocation } from "../src/lib/isExpoGo";
@@ -131,13 +132,18 @@ function NavigationGuard() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="location-permission" />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <OfflineBanner />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="location-permission" />
+      </Stack>
+    </View>
   );
 }
+
+import { AppUpdateGate } from "../src/components/AppUpdateGate";
 
 export default function RootLayout() {
   const [fontsLoaded] = useAppFonts();
@@ -161,8 +167,10 @@ export default function RootLayout() {
         <TerminologyProvider>
           <AuthProvider>
             <ConfirmDialogProvider>
-              <StatusBar style="dark" />
-              <NavigationGuard />
+              <AppUpdateGate appType="staff">
+                <StatusBar style="dark" />
+                <NavigationGuard />
+              </AppUpdateGate>
             </ConfirmDialogProvider>
           </AuthProvider>
         </TerminologyProvider>

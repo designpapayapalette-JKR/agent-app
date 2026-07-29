@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { api, login as apiLogin, logout as apiLogout, fetchMe, hasStoredSession } from "./api";
+import { setPin, verifyPin, hasPin, setLastUserId, getLastUserId } from "./pin";
 import type { UserRole } from "./moduleCategories";
 
 interface AuthContextType {
@@ -15,6 +16,9 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshBrands: () => Promise<void>;
   refreshAllData: () => Promise<void>;
+  pinLoginAvailable: boolean;
+  setupQuickPin: (pin: string) => Promise<void>;
+  unlockWithPin: (pin: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeCompany, setActiveCompany] = useState<any | null>(null);
   const [activeBrand, setActiveBrand] = useState<any | null>(null);
   const [availableBrands, setAvailableBrands] = useState<any[]>([]);
+  const [pinLoginAvailable, setPinLoginAvailable] = useState(false);
 
   const userRole = (user?.role as UserRole) || "field_agent";
 
@@ -60,6 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function checkAuth() {
       try {
+        const lastUserId = await getLastUserId();
+        if (lastUserId) {
+          setPinLoginAvailable(await hasPin(lastUserId));
+        }
+
         if (!(await hasStoredSession())) {
           setIsLoading(false);
           return;
@@ -101,6 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const me = await apiLogin(email, password);
       setUser(me);
       setIsAuthenticated(true);
+      await setLastUserId(me.id);
+      setPinLoginAvailable(await hasPin(me.id));
       if (me.company_id) {
         await fetchTenantData();
       }
@@ -111,6 +123,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setActiveBrand(null);
       setAvailableBrands([]);
       throw error;
+    }
+  };
+
+  const setupQuickPin = async (pin: string) => {
+    if (!user?.id) throw new Error("You must be signed in to set up a PIN.");
+    await setPin(user.id, pin);
+    setPinLoginAvailable(true);
+  };
+
+  const unlockWithPin = async (pin: string): Promise<boolean> => {
+    const lastUserId = await getLastUserId();
+    if (!lastUserId) return false;
+
+    const verified = await verifyPin(lastUserId, pin);
+    if (!verified) return false;
+
+    // PIN is correct — restore the already-persisted session rather than
+    // re-authenticating with email/password (which we never store).
+    try {
+      const result = await fetchMe();
+      const me = result.status === "ok" ? result.user : result.status === "transient" ? result.cachedUser : null;
+      if (!me) return false;
+      setUser(me);
+      setIsAuthenticated(true);
+      if (me.company_id) {
+        await fetchTenantData();
+      }
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
@@ -143,6 +185,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         refreshBrands,
         refreshAllData,
+        pinLoginAvailable,
+        setupQuickPin,
+        unlockWithPin,
       }}
     >
       {children}

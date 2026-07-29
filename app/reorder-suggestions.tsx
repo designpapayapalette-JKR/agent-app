@@ -40,7 +40,7 @@ export default function ReorderSuggestionsScreen() {
  const load = async () => {
  setLoading(true);
  try {
- const res = await api.get<{ data: Suggestion[] }>("/purchases/reorder-suggestions");
+ const res = await api.get<{ data: Suggestion[] }>("/purchase-orders/suggestions/reorder");
  setSuggestions(res.data ?? []);
  } catch (e) {
  Alert.alert("Error", "Could not load reorder suggestions.");

@@ -5,19 +5,18 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "react-native-paper";
-import * as SecureStore from "expo-secure-store";
-import { api, ApiError } from "../../src/lib/api";
-import { useAuth } from "../../src/lib/auth-context";
-import { useModuleVisibility } from "../../src/lib/useModuleVisibility";
-import { useConfirm } from "../../src/components/ConfirmDialog";
-import { useTopInset } from "../../src/lib/useTopInset";
-import { useBottomInset } from "../../src/lib/useBottomInset";
-import { getAvatarColor, getInitial } from "../../src/lib/avatarColor";
-import BulkUploadCard from "../../src/components/BulkUploadCard";
-import EmptyState from "../../src/components/EmptyState";
-import { GstRatePicker } from "../../src/components/GstRatePicker";
-import { useTerminology } from "../../src/lib/terminology-context";
-import { useProductAttributeDefs, ProductCustomFieldsFormSection, loadProductCustomFieldValues, saveProductCustomFieldValues, CustomFieldValue } from "../../src/components/ProductCustomFields";
+import { api, ApiError } from "../src/lib/api";
+import { useAuth } from "../src/lib/auth-context";
+import { useModuleVisibility } from "../src/lib/useModuleVisibility";
+import { useConfirm } from "../src/components/ConfirmDialog";
+import { useTopInset } from "../src/lib/useTopInset";
+import { useBottomInset } from "../src/lib/useBottomInset";
+import { getAvatarColor, getInitial } from "../src/lib/avatarColor";
+import BulkUploadCard from "../src/components/BulkUploadCard";
+import EmptyState from "../src/components/EmptyState";
+import { GstRatePicker } from "../src/components/GstRatePicker";
+import { useTerminology } from "../src/lib/terminology-context";
+import { useProductAttributeDefs, ProductCustomFieldsFormSection, loadProductCustomFieldValues, saveProductCustomFieldValues, CustomFieldValue } from "../src/components/ProductCustomFields";
 
 function formatRupee(n: number): string {
  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -53,12 +52,12 @@ interface Warehouse {
 }
 
 export default function InventoryScreen() {
- const theme = useTheme();
- const { user, activeBrand, activeCompany, userRole } = useAuth();
- const { isModuleEnabled } = useModuleVisibility(userRole);
- const { t } = useTerminology();
+  const theme = useTheme();
+  const { user, activeBrand, activeCompany, userRole } = useAuth();
+  const { isModuleEnabled } = useModuleVisibility(userRole);
+  const { t } = useTerminology();
 
- const { defs: customFieldDefs, loading: customFieldDefsLoading } = useProductAttributeDefs();
+  const { defs: customFieldDefs, loading: customFieldDefsLoading } = useProductAttributeDefs();
 
  const canManageWarehouses = isModuleEnabled("warehouse");
  const router = useRouter();
@@ -130,35 +129,6 @@ export default function InventoryScreen() {
  };
 
  useEffect(fetchWarehouses, [user, canManageWarehouses]);
-
- // Persist the selected warehouse per-company so the filter survives app
- // restarts/remounts instead of silently resetting to "All Warehouses"
- // every time (previously a plain useState with no storage backing at all).
- const warehouseSelectionKey = user?.company_id ? `inventory_active_warehouse_${user.company_id}` : null;
-
- useEffect(() => {
- if (!warehouseSelectionKey || warehouses.length === 0) return;
- SecureStore.getItemAsync(warehouseSelectionKey)
- .then((stored) => {
- // Only restore if that warehouse still exists — a deleted/renamed
- // warehouse shouldn't leave the filter pointed at a dead id.
- if (stored && warehouses.some((w) => w.id === stored)) {
- setActiveWarehouseId(stored);
- }
- })
- .catch(() => {});
- // Only run once per warehouse-list load, not on every activeWarehouseId change.
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [warehouseSelectionKey, warehouses.length]);
-
- useEffect(() => {
- if (!warehouseSelectionKey) return;
- if (activeWarehouseId) {
- SecureStore.setItemAsync(warehouseSelectionKey, activeWarehouseId).catch(() => {});
- } else {
- SecureStore.deleteItemAsync(warehouseSelectionKey).catch(() => {});
- }
- }, [warehouseSelectionKey, activeWarehouseId]);
 
  const resetWarehouseForm = () => {
  setEditingWarehouseId(null);
@@ -665,28 +635,10 @@ export default function InventoryScreen() {
  reason: adjustReason.trim(),
  });
  Alert.alert("Success", `Stock ${adjustType === "add" ? "added" : "removed"} successfully`);
- // Patch local state with the known signed delta instead of a full
- // fetchProducts() refetch — stockQuantity is a company-wide total, so
- // this stays correct regardless of which warehouse the adjustment
- // was made against. If a specific warehouse filter is active, its
- // per-warehouse figure is patched the same way.
- const adjustedId = adjustTarget.id;
- setProducts((prev) =>
- prev.map((p) =>
- p.id === adjustedId
- ? { ...p, stock_quantity: String((parseFloat(p.stock_quantity) || 0) + quantity) }
- : p
- )
- );
- if (activeWarehouseId) {
- setWarehouseStock((prev) => ({
- ...prev,
- [adjustedId]: (prev[adjustedId] ?? 0) + quantity,
- }));
- }
  setAdjustTarget(null);
  setAdjustQuantity("");
  setAdjustReason("");
+ fetchProducts();
  } catch (e: any) {
  Alert.alert("Error", e instanceof ApiError ? e.message : "Failed to adjust stock");
  } finally {
@@ -767,15 +719,23 @@ export default function InventoryScreen() {
  .filter((p) => p.parent_product_id && !visibleProducts.some((root) => root.id === p.parent_product_id))
  .sort(sortFn);
  const groupedProducts: Product[] = [];
- for (const root of [...rootProducts, ...orphanVariants]) {
- groupedProducts.push(root);
- if (!expandedGroups.has(root.id)) continue;
- for (const variant of visibleProducts.filter((p) => p.parent_product_id === root.id).sort(sortFn)) {
- groupedProducts.push(variant);
- }
- }
+  for (const root of [...rootProducts, ...orphanVariants]) {
+    groupedProducts.push(root);
+    if (!expandedGroups.has(root.id)) continue;
+    for (const variant of visibleProducts.filter((p) => p.parent_product_id === root.id).sort(sortFn)) {
+      groupedProducts.push(variant);
+    }
+  }
 
- return (
+  if (!isModuleEnabled("inventory")) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <EmptyState icon="package-variant-closed" title="Not Available" description="Inventory access is not available for your role." />
+      </View>
+    );
+  }
+
+  return (
  <View className="flex-1 bg-background px-5" style={{ paddingTop: topInset }}>
  {/* Header */}
  <View className="flex-row items-center justify-between mb-4 pt-2">
@@ -795,8 +755,8 @@ export default function InventoryScreen() {
  </View>
  </View>
 
- {/* Search */}
- <View className="flex-row items-center mb-3 bg-surface-container-lowest rounded-2xl px-4 py-3 border border-outline-variant">
+  {/* Search */}
+  <View className="flex-row items-center mb-3 bg-surface-container-lowest rounded-xl px-3 py-2 border border-outline-variant">
  <MaterialCommunityIcons name="magnify" size={18} color="#6B7280" />
  <TextInput
  placeholder="Search by name, SKU, or barcode..."
@@ -812,56 +772,59 @@ export default function InventoryScreen() {
  )}
  </View>
 
- {/* Toolbar */}
- <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3" contentContainerStyle={{ gap: 6 }}>
- <ToolbarChip icon="sort" label={SORT_OPTIONS.find((o) => o.key === sortKey)?.label || "Sort"} colorActive="#6B7280" onPress={() => setIsSortMenuOpen(true)} />
- <ToolbarChip icon="alert-circle-outline" label="Low Stock" active={lowStockOnly} colorActive="#D64545" onPress={() => setLowStockOnly((v) => !v)} />
- <ToolbarChip icon="cart-outline" label="Reorder" onPress={() => router.push("/reorder-suggestions" as any)} />
- <ToolbarChip icon="tag-outline" label="GST" colorActive="#B45309" onPress={() => router.push("/gst-rate-tools" as any)} />
- <ToolbarChip icon="currency-inr" label="Price" colorActive="#7C3AED" onPress={() => router.push("/bulk-price-update" as any)} />
- </ScrollView>
+   {/* Toolbar — Filters & Warehouse */}
+   <View className="bg-surface-container-low rounded-2xl px-3 py-2 mb-3" style={{ gap: 8 }}>
+     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+       <ToolbarChip icon="sort" label={SORT_OPTIONS.find((o) => o.key === sortKey)?.label || "Sort"} colorActive="#6B7280" onPress={() => setIsSortMenuOpen(true)} />
+       <ToolbarChip icon="alert-circle-outline" label="Low Stock" active={lowStockOnly} colorActive="#D64545" onPress={() => setLowStockOnly((v) => !v)} />
+       <ToolbarChip icon="cart-outline" label="Reorder" onPress={() => router.push("/reorder-suggestions" as any)} />
+       <ToolbarChip icon="tag-outline" label="GST" colorActive="#B45309" onPress={() => router.push("/gst-rate-tools" as any)} />
+       <ToolbarChip icon="currency-inr" label="Price" colorActive="#7C3AED" onPress={() => router.push("/bulk-price-update" as any)} />
+     </ScrollView>
 
- {/* Sort Menu */}
- <Modal visible={isSortMenuOpen} animationType="fade" transparent onRequestClose={() => setIsSortMenuOpen(false)}>
- <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setIsSortMenuOpen(false)}>
- <Pressable className="bg-background rounded-t-3xl px-6 pt-6" style={{ paddingBottom: bottomInset + 24 }}>
- <Text className="text-lg font-bold text-on-surface mb-4">Sort By</Text>
- {SORT_OPTIONS.map((opt) => (
- <Pressable
- key={opt.key}
- onPress={() => {
- setSortKey(opt.key);
- setIsSortMenuOpen(false);
- }}
- className="flex-row items-center justify-between py-3.5 border-b border-outline-variant"
- >
- <Text
- className={`text-base ${sortKey === opt.key ? "font-bold text-primary" : "font-medium text-on-surface"}`}
- >
- {opt.label}
- </Text>
- {sortKey === opt.key && <MaterialCommunityIcons name="check" size={18} color={theme.colors.primary} />}
- </Pressable>
- ))}
- </Pressable>
- </Pressable>
- </Modal>
+     {warehouses.length > 0 && (
+       <View className="border-t border-outline-variant pt-2">
+         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+           <WarehouseChip label="All Warehouses" active={activeWarehouseId === null} onPress={() => setActiveWarehouseId(null)} />
+           {warehouses.map((w) => (
+             <WarehouseChip key={w.id} label={w.name} active={activeWarehouseId === w.id} onPress={() => setActiveWarehouseId(w.id)} />
+           ))}
+           {canManageWarehouses && (
+             <>
+               <WarehouseChip label="+ Add" dashed onPress={openAddWarehouse} />
+               <WarehouseChip label="" icon="cog-outline" onPress={() => setIsManagingWarehouses(true)} />
+             </>
+           )}
+         </ScrollView>
+       </View>
+     )}
+   </View>
 
- {/* Warehouse Selector */}
- {warehouses.length > 0 && (
- <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3" contentContainerStyle={{ gap: 6 }}>
- <WarehouseChip label="All Warehouses" active={activeWarehouseId === null} onPress={() => setActiveWarehouseId(null)} />
- {warehouses.map((w) => (
- <WarehouseChip key={w.id} label={w.name} active={activeWarehouseId === w.id} onPress={() => setActiveWarehouseId(w.id)} />
- ))}
- {canManageWarehouses && (
- <>
- <WarehouseChip label="+ Add" dashed onPress={openAddWarehouse} />
- <WarehouseChip label="" icon="cog-outline" onPress={() => setIsManagingWarehouses(true)} />
- </>
- )}
- </ScrollView>
- )}
+  {/* Sort Menu */}
+  <Modal visible={isSortMenuOpen} animationType="fade" transparent onRequestClose={() => setIsSortMenuOpen(false)}>
+  <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setIsSortMenuOpen(false)}>
+  <Pressable className="bg-background rounded-t-3xl px-6 pt-6" style={{ paddingBottom: bottomInset + 24 }}>
+  <Text className="text-lg font-bold text-on-surface mb-4">Sort By</Text>
+  {SORT_OPTIONS.map((opt) => (
+  <Pressable
+  key={opt.key}
+  onPress={() => {
+  setSortKey(opt.key);
+  setIsSortMenuOpen(false);
+  }}
+  className="flex-row items-center justify-between py-3.5 border-b border-outline-variant"
+  >
+  <Text
+  className={`text-base ${sortKey === opt.key ? "font-bold text-primary" : "font-medium text-on-surface"}`}
+  >
+  {opt.label}
+  </Text>
+  {sortKey === opt.key && <MaterialCommunityIcons name="check" size={18} color={theme.colors.primary} />}
+  </Pressable>
+  ))}
+  </Pressable>
+  </Pressable>
+  </Modal>
 
  {/* Catalog List */}
  {loading ? (
@@ -900,10 +863,10 @@ export default function InventoryScreen() {
  const hasDetails = !!(item.sku || item.barcode || item.hsn_code);
  return (
  <View
- className="bg-surface-container-lowest rounded-2xl border border-outline-variant mb-3 overflow-hidden"
- style={isVariant ? { marginLeft: 24, borderLeftWidth: 3, borderLeftColor: theme.colors.primary } : undefined}
- >
- <Pressable onPress={() => openEditModal(item)} className="p-3.5 active:opacity-80">
+  className="bg-surface-container-lowest rounded-xl border border-outline-variant mb-2 overflow-hidden"
+  style={isVariant ? { marginLeft: 24, borderLeftWidth: 3, borderLeftColor: theme.colors.primary } : undefined}
+  >
+  <Pressable onPress={() => openEditModal(item)} className="p-3 active:opacity-80">
  <View className="flex-row items-center">
  <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: avatarColor.bg }}>
  {isVariant ? (
@@ -1696,60 +1659,48 @@ function IconButton({ icon, color, bg, onPress }: { icon: React.ComponentProps<t
 }
 
 function ToolbarChip({ icon, label, active, colorActive, onPress }: {
- icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
- label: string;
- active?: boolean;
- colorActive?: string;
- onPress: () => void;
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+  label: string;
+  active?: boolean;
+  colorActive?: string;
+  onPress: () => void;
 }) {
- if (active) {
- return (
- <Pressable onPress={onPress} className="flex-row items-center rounded-xl px-3 py-2.5" style={[{ gap: 4 }, { backgroundColor: colorActive || "#D64545" }]}>
- <MaterialCommunityIcons name={icon} size={14} color="#fff" />
- <Text className="text-xs font-bold text-white">{label}</Text>
- </Pressable>
- );
- }
- if (colorActive) {
- return (
- <Pressable onPress={onPress} className="flex-row items-center rounded-xl px-3 py-2.5 bg-surface-container" style={{ gap: 4 }}>
- <MaterialCommunityIcons name={icon} size={14} color={colorActive} />
- <Text className="text-xs font-bold" style={{ color: colorActive }}>{label}</Text>
- </Pressable>
- );
- }
- return (
- <Pressable onPress={onPress} className="flex-row items-center rounded-xl px-3 py-2.5 bg-primary" style={{ gap: 4 }}>
- <MaterialCommunityIcons name={icon} size={14} color="#fff" />
- <Text className="text-xs font-bold text-white">{label}</Text>
- </Pressable>
- );
+  const isActive = !!active;
+  const bg = isActive ? (colorActive || "#1E8E85") : "#F3F4F6";
+  const fg = isActive ? "#fff" : "#6B7280";
+  return (
+    <Pressable onPress={onPress} className="flex-row items-center rounded-full px-3 py-1.5" style={{ gap: 4, backgroundColor: bg }}>
+      <MaterialCommunityIcons name={icon} size={13} color={fg} />
+      <Text className="text-xs font-semibold" style={{ color: fg }}>{label}</Text>
+    </Pressable>
+  );
 }
 
 function WarehouseChip({ label, active, dashed, icon, onPress }: {
- label: string;
- active?: boolean;
- dashed?: boolean;
- icon?: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
- onPress: () => void;
+  label: string;
+  active?: boolean;
+  dashed?: boolean;
+  icon?: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+  onPress: () => void;
 }) {
- if (icon) return <IconButton icon={icon} color="#6B7280" onPress={onPress} />;
- return (
- <Pressable
- onPress={onPress}
- className="flex-row items-center rounded-xl px-3.5 py-2.5"
- style={[{
- gap: 5,
- backgroundColor: active ? "#1E8E85" : "#F3F4F6",
- borderWidth: dashed ? 1 : 0,
- borderColor: dashed ? "#D1D5DB" : undefined,
- borderStyle: dashed ? "dashed" : undefined,
- }]}
- >
- {!dashed && <MaterialCommunityIcons name="warehouse" size={14} color={active ? "#fff" : "#6B7280"} />}
- <Text className="text-xs font-bold" style={{ color: active ? "#fff" : dashed ? "#1E8E85" : "#6B7280" }}>{label}</Text>
- </Pressable>
- );
+  if (icon) return <IconButton icon={icon} color="#9CA3AF" onPress={onPress} />;
+  const isActive = !!active;
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center rounded-full px-3 py-1.5"
+      style={{
+        gap: 4,
+        backgroundColor: isActive ? "#1E8E85" : "#F3F4F6",
+        borderWidth: dashed ? 1.5 : 0,
+        borderColor: dashed ? "#D1D5DB" : undefined,
+        borderStyle: dashed ? "dashed" : undefined,
+      }}
+    >
+      {!dashed && <MaterialCommunityIcons name="warehouse" size={13} color={isActive ? "#fff" : "#6B7280"} />}
+      <Text className="text-xs font-semibold" style={{ color: isActive ? "#fff" : dashed ? "#1E8E85" : "#6B7280" }}>{label}</Text>
+    </Pressable>
+  );
 }
 
 function ActionChip({ icon, label, onPress }: { icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"]; label: string; onPress: () => void }) {

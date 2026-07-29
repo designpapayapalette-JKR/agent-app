@@ -107,15 +107,35 @@ function GradientButton({
 
 export default function LoginScreen() {
   const theme = useTheme();
-  const { login } = useAuth();
+  const { login, unlockWithPin, pinLoginAvailable } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
+  const [isPinLogin, setIsPinLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     setError(null);
+    if (isPinLogin) {
+      if (!pin || pin.length < 4) {
+        setError("Please enter a valid 4-digit PIN.");
+        return;
+      }
+      setLoading(true);
+      try {
+        const unlocked = await unlockWithPin(pin);
+        if (!unlocked) {
+          setError("Incorrect PIN, or your session has expired — please sign in with email & password.");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to unlock.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     if (!email || !password) {
       setError("Email and password are required.");
       return;
@@ -150,7 +170,7 @@ export default function LoginScreen() {
             }}
           >
             <Text className="text-xl font-bold text-on-surface dark:text-on-surface mb-6">
-              Sign In to Account
+              {isPinLogin ? "Quick PIN Login" : "Sign In to Account"}
             </Text>
 
               {error && (
@@ -159,51 +179,90 @@ export default function LoginScreen() {
               </View>
             )}
 
-            <View className="space-y-4">
-              <View>
-                <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
-                  Email Address
-                </Text>
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 text-base font-medium"
-                />
-              </View>
-
-              <View className="mt-4">
-                <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
-                  Password
-                </Text>
-                <View className="relative justify-center">
+            {!isPinLogin ? (
+              <View className="space-y-4">
+                <View>
+                  <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
+                    Email Address
+                  </Text>
                   <TextInput
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Enter your password"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Enter your email"
                     placeholderTextColor={theme.colors.onSurfaceVariant}
-                    secureTextEntry={!showPassword}
                     autoCapitalize="none"
-                    className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 pr-12 text-base font-medium"
+                    keyboardType="email-address"
+                    className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 text-base font-medium"
                   />
-                  <Pressable
-                    onPress={() => setShowPassword((v) => !v)}
-                    hitSlop={8}
-                    style={{ position: "absolute", right: 14 }}
-                    accessibilityRole="button"
-                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                  >
-                    <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.colors.onSurfaceVariant} />
-                  </Pressable>
+                </View>
+
+                <View className="mt-4">
+                  <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
+                    Password
+                  </Text>
+                  <View className="relative justify-center">
+                    <TextInput
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder="Enter your password"
+                      placeholderTextColor={theme.colors.onSurfaceVariant}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 pr-12 text-base font-medium"
+                    />
+                    <Pressable
+                      onPress={() => setShowPassword((v) => !v)}
+                      hitSlop={8}
+                      style={{ position: "absolute", right: 14 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                    >
+                      <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.colors.onSurfaceVariant} />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
-            </View>
+            ) : (
+              <View>
+                <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
+                  Enter 4-Digit PIN
+                </Text>
+                <TextInput
+                  value={pin}
+                  onChangeText={setPin}
+                  placeholder="••••"
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                  secureTextEntry
+                  maxLength={4}
+                  keyboardType="number-pad"
+                  className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 font-bold text-3xl text-center tracking-widest"
+                />
+                <Text className="text-xs text-on-surface-variant mt-3">
+                  Tip: Switch to email login if your session expired.
+                </Text>
+              </View>
+            )}
 
             {/* Login Button */}
-            <GradientButton label="Sign In" onPress={handleLogin} disabled={loading} loading={loading} />
+            <GradientButton label={isPinLogin ? "Enter" : "Sign In"} onPress={handleLogin} disabled={loading} loading={loading} />
+
+            {/* Toggle PIN / Email login — PIN option only shown once a PIN has
+                actually been set up on this device (Profile → Set Quick PIN) */}
+            {(isPinLogin || pinLoginAvailable) && (
+              <Pressable
+                onPress={() => {
+                  setIsPinLogin(!isPinLogin);
+                  setError(null);
+                }}
+                className="mt-6 py-3 items-center"
+                accessibilityRole="button"
+                accessibilityLabel={isPinLogin ? "Switch to email login" : "Switch to quick PIN login"}
+              >
+                <Text className="text-primary font-semibold text-base">
+                  {isPinLogin ? "Use Email & Password" : "Use Quick PIN"}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </ScrollView>

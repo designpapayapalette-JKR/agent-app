@@ -8,6 +8,10 @@ import {
   Alert,
   Switch,
   useColorScheme,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -40,7 +44,7 @@ function capitalize(s: string) {
 }
 
 export default function ProfileScreen() {
-  const { user, activeCompany, logout } = useAuth();
+  const { user, activeCompany, logout, pinLoginAvailable, setupQuickPin } = useAuth();
   const { lang, setLang, t } = useTerminology();
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -98,6 +102,38 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  const [isPinSetupModal, setIsPinSetupModal] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+
+  const closePinSetupModal = () => {
+    setIsPinSetupModal(false);
+    setNewPin("");
+    setConfirmPin("");
+  };
+
+  const handleSetupPin = async () => {
+    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+      Alert.alert("Invalid PIN", "PIN must be exactly 4 digits.");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      Alert.alert("PIN Mismatch", "The two PINs you entered don't match.");
+      return;
+    }
+    setPinSubmitting(true);
+    try {
+      await setupQuickPin(newPin);
+      Alert.alert("PIN Set", "Your Quick PIN is ready. You can now use it on the login screen instead of your email and password.");
+      closePinSetupModal();
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to set up PIN.");
+    } finally {
+      setPinSubmitting(false);
+    }
+  };
 
   const [deletingAccount, setDeletingAccount] = useState(false);
   const handleDeleteAccount = () => {
@@ -398,6 +434,32 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {/* ── Security ── */}
+        <Text className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-3">
+          {t("staff")?.includes("कामगार") ? "सुरक्षा" : "Security"}
+        </Text>
+        <View className="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-zinc-800 mb-6 overflow-hidden">
+          <Pressable
+            onPress={() => setIsPinSetupModal(true)}
+            className="px-4 py-3.5 flex-row items-center justify-between"
+          >
+            <View className="flex-1 mr-2">
+              <Text className="text-sm font-bold text-text-primary dark:text-text-primary-dark">
+                {pinLoginAvailable ? "Change Quick PIN" : "Set Up Quick PIN"}
+              </Text>
+              <Text className="text-xs text-text-secondary mt-0.5">
+                A 4-digit PIN to unlock the app quickly instead of typing your email and password every time.
+              </Text>
+            </View>
+            <View className="flex-row items-center" style={{ gap: 4 }}>
+              <Text className="text-primary font-bold text-sm">
+                {pinLoginAvailable ? "Change" : "Set Up"}
+              </Text>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.primary} />
+            </View>
+          </Pressable>
+        </View>
+
         {/* ── Logout ── */}
         <Pressable
           onPress={handleLogout}
@@ -438,6 +500,65 @@ export default function ProfileScreen() {
           MMC Agent · v{APP_VERSION}
         </Text>
       </View>
+
+      {/* Quick PIN Setup Modal */}
+      <Modal visible={isPinSetupModal} animationType="slide" transparent onRequestClose={closePinSetupModal}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1 justify-end bg-black/40"
+        >
+          <View className="bg-background dark:bg-background-dark rounded-t-3xl px-6 pt-6 pb-10">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-bold text-text-primary dark:text-text-primary-dark">
+                {pinLoginAvailable ? "Change Quick PIN" : "Set Up Quick PIN"}
+              </Text>
+              <Pressable onPress={closePinSetupModal} className="w-10 h-10 items-center justify-center">
+                <MaterialCommunityIcons name="close" size={20} color={theme.colors.onSurfaceVariant} />
+              </Pressable>
+            </View>
+
+            <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+              New 4-Digit PIN
+            </Text>
+            <TextInput
+              value={newPin}
+              onChangeText={setNewPin}
+              placeholder="••••"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              secureTextEntry
+              maxLength={4}
+              keyboardType="number-pad"
+              className="bg-surface-container-lowest text-text-primary border border-outline-variant rounded-xl px-4 py-4 font-bold text-3xl text-center tracking-widest mb-4"
+            />
+
+            <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
+              Confirm PIN
+            </Text>
+            <TextInput
+              value={confirmPin}
+              onChangeText={setConfirmPin}
+              placeholder="••••"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              secureTextEntry
+              maxLength={4}
+              keyboardType="number-pad"
+              className="bg-surface-container-lowest text-text-primary border border-outline-variant rounded-xl px-4 py-4 font-bold text-3xl text-center tracking-widest mb-6"
+            />
+
+            <Pressable
+              onPress={handleSetupPin}
+              disabled={pinSubmitting}
+              className="bg-primary py-4 rounded-xl items-center active:opacity-90"
+            >
+              {pinSubmitting ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-bold text-lg">Save PIN</Text>
+              )}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
