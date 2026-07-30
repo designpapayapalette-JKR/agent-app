@@ -157,7 +157,7 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <LoginHero />
-        <View className="px-6 pb-12 flex-1 max-w-md mx-auto w-full" style={{ marginTop: -32 }}>
+        <View className="px-6 pb-12 flex-1 max-w-md mx-auto w-full" style={{ marginTop: -16 }}>
           {/* Form Card */}
           <View
             className="bg-surface dark:bg-surface-dark p-6 rounded-3xl"
@@ -169,7 +169,12 @@ export default function LoginScreen() {
               elevation: 8,
             }}
           >
-            <Text className="text-xl font-bold text-on-surface dark:text-on-surface mb-6">
+            <Text
+              className="text-xl font-bold text-on-surface dark:text-on-surface mb-6"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {isPinLogin ? "Quick PIN Login" : "Sign In to Account"}
             </Text>
 
