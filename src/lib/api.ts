@@ -70,7 +70,18 @@ async function refreshAccessToken(): Promise<string | null> {
       }
       if (!res.ok) return null;
       const json = await res.json();
-      const updated: AuthData = { ...auth, accessToken: json.accessToken, expiresAt: json.expiresAt };
+      if (
+        typeof json?.accessToken !== "string" ||
+        typeof json?.refreshToken !== "string" ||
+        typeof json?.expiresAt !== "number"
+      ) {
+        return null;
+      }
+      const updated: AuthData = {
+        accessToken: json.accessToken,
+        refreshToken: json.refreshToken,
+        expiresAt: json.expiresAt,
+      };
       await setAuthData(updated);
       return updated.accessToken;
     } catch {
@@ -101,6 +112,23 @@ interface RequestOptions {
   skipAuth?: boolean;
 }
 
+let activeOutletId: string | null = null;
+export function setOutletId(id: string | null) {
+  activeOutletId = id;
+}
+
+const REQUEST_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function request<T = unknown>(
   method: string,
   path: string,
@@ -118,12 +146,15 @@ async function request<T = unknown>(
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (activeOutletId) {
+    headers["X-Outlet-Id"] = activeOutletId;
+  }
   if (!options.skipAuth) {
     const token = await getValidAccessToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  let res = await fetch(url, {
+  let res = await fetchWithTimeout(url, {
     method,
     // App code writes snake_case (matching the old Directus field names) —
     // convert to camelCase for this server.
@@ -141,7 +172,7 @@ async function request<T = unknown>(
     const refreshedToken = await refreshAccessToken();
     if (refreshedToken) {
       headers.Authorization = `Bearer ${refreshedToken}`;
-      res = await fetch(url, {
+      res = await fetchWithTimeout(url, {
         method,
         body: body !== undefined ? JSON.stringify(toCamelCase(body)) : undefined,
         headers,

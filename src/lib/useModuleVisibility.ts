@@ -10,6 +10,22 @@ const POLL_INTERVAL = 5 * 60 * 1000;
 let _cachedModules: string[] | null = null;
 let _cacheTs = 0;
 const CACHE_TTL = POLL_INTERVAL;
+const MODULE_GATE_KEYS: Record<string, string> = {
+ pos: "pos", history: "pos", "held-bills": "pos", returns: "pos",
+ b2b: "b2b", "sales-orders": "b2b", "price-lists": "b2b", "bulk-price-update": "b2b",
+ estimates: "estimates", "recurring-invoices": "estimates",
+ inventory: "inventory", categories: "inventory", barcodes: "inventory",
+ "reorder-suggestions": "inventory", "gst-rate-tools": "inventory",
+ purchases: "warehouse", "purchase-history": "warehouse", "purchase-orders": "warehouse",
+ warehouse: "warehouse", challans: "challans",
+ ledger: "ledger", payments: "payments", expenses: "expenses",
+ "customer-groups": "ledger", "credit-note": "ledger", "debit-note": "ledger",
+ "unified-ledger": "ledger", staff: "staff", attendance: "attendance",
+ payroll: "payroll", agents: "agents", "referral-program": "referrals",
+ "pnl-report": "reports", "balance-sheet": "reports", "gst-reports": "reports",
+ daybook: "reports", "aging-report": "reports", "bank-accounts": "reports",
+ "bank-reconciliation": "reports", analytics: "reports", "financial-year": "reports",
+};
 
 export function useModuleVisibility(userRole: UserRole | null | undefined) {
  const [enabledModules, setEnabledModules] = useState<string[]>(ALL_MODULES);
@@ -29,7 +45,7 @@ export function useModuleVisibility(userRole: UserRole | null | undefined) {
   }
   try {
    const mobileRes: any = await api.get("/companies/me/mobile-modules");
-   if (Array.isArray(mobileRes?.data) && mobileRes.data.length > 0) {
+   if (Array.isArray(mobileRes?.data)) {
     _cachedModules = mobileRes.data;
     _cacheTs = Date.now();
     setEnabledModules(mobileRes.data);
@@ -65,15 +81,18 @@ export function useModuleVisibility(userRole: UserRole | null | undefined) {
 
  const isModuleEnabled = useCallback(
  (moduleKey: string) => {
+ const gateKey = MODULE_GATE_KEYS[moduleKey] ?? moduleKey;
  const roleModules = ROLE_MODULES[effectiveRole] || ALL_MODULES;
- return roleModules.includes(moduleKey) && enabledModules.includes(moduleKey);
+ return roleModules.includes(moduleKey) && enabledModules.includes(gateKey);
  },
  [effectiveRole, enabledModules]
  );
 
  const isChildVisible = useCallback(
- (child: ModuleItem, roleModules: string[]) =>
- roleModules.includes(child.key) && (!child.gateKey || enabledModules.includes(child.gateKey)),
+ (child: ModuleItem, roleModules: string[]) => {
+ const gateKey = child.gateKey ?? MODULE_GATE_KEYS[child.key];
+ return roleModules.includes(child.key) && (!gateKey || enabledModules.includes(gateKey));
+ },
  [enabledModules]
  );
 

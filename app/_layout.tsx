@@ -34,6 +34,7 @@ import {
   isTracking,
 } from "../src/lib/location-tracker";
 import { TerminologyProvider } from "../src/lib/terminology-context";
+import { OutletProvider } from "../src/lib/outlet-context";
 import { syncQueuedData, syncQueuedSales } from "../src/lib/offlineQueue";
 import { useAppFonts } from "../src/lib/fonts";
 
@@ -144,6 +145,7 @@ function NavigationGuard() {
 }
 
 import { AppUpdateGate } from "../src/components/AppUpdateGate";
+import { SyncGate } from "../src/components/SyncGate";
 
 export default function RootLayout() {
   const [fontsLoaded] = useAppFonts();
@@ -166,12 +168,16 @@ export default function RootLayout() {
       <PaperProvider theme={MMCTheme}>
         <TerminologyProvider>
           <AuthProvider>
-            <ConfirmDialogProvider>
-              <AppUpdateGate appType="staff">
-                <StatusBar style="dark" />
-                <NavigationGuard />
-              </AppUpdateGate>
-            </ConfirmDialogProvider>
+            <OutletProvider>
+              <ConfirmDialogProvider>
+                <AppUpdateGate appType="staff">
+                  <SyncGate>
+                    <StatusBar style="dark" />
+                    <NavigationGuard />
+                  </SyncGate>
+                </AppUpdateGate>
+              </ConfirmDialogProvider>
+            </OutletProvider>
           </AuthProvider>
         </TerminologyProvider>
       </PaperProvider>

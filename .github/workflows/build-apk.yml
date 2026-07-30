@@ -43,6 +43,10 @@ jobs:
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=1g
           EXPO_PUBLIC_API_URL: https://api.managemycounter.com
+          # beta-latest must remain compatible with the certificate used by
+          # existing direct-download installations. Move the production track
+          # to a managed release keystore before publishing to an app store.
+          ALLOW_DEBUG_RELEASE_SIGNING: "true"
         run: ./gradlew assembleRelease
 
       - name: Rename APK

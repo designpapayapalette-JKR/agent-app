@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { api, login as apiLogin, logout as apiLogout, fetchMe, hasStoredSession } from "./api";
 import { setPin, verifyPin, hasPin, setLastUserId, getLastUserId } from "./pin";
+import { clearReadCache } from "./readCache";
 import type { UserRole } from "./moduleCategories";
 
 interface AuthContextType {
@@ -162,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      await clearReadCache();
       setUser(null);
       setIsAuthenticated(false);
       setActiveCompany(null);

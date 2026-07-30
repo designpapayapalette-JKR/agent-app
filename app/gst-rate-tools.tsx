@@ -222,7 +222,7 @@ export default function GstRateToolsScreen() {
  </View>
 
  {!reviewLoaded ? (
- <Text className="text-sm text-on-surface-variant ">Tap "Check" to find products whose GST rate differs from what their HSN code suggests.</Text>
+ <Text className="text-sm text-on-surface-variant ">Tap “Check” to find products whose GST rate differs from what their HSN code suggests.</Text>
  ) : reviewLoading ? (
  <ActivityIndicator size="large" color={theme.colors.primary} />
  ) : mismatches.length === 0 ? (

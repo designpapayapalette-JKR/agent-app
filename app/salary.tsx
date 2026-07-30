@@ -89,7 +89,7 @@ export default function SalaryScreen() {
             <View className="items-center py-20">
               <MaterialCommunityIcons name="cash-remove" size={40} color={theme.colors.outline} style={{ marginBottom: 12 }} />
               <Text className="text-on-surface-variant font-semibold text-sm text-center">
-                No salary records yet. Your employer will add these as they're paid.
+                No salary records yet. Your employer will add these as they’re paid.
               </Text>
             </View>
           }
@@ -121,4 +121,3 @@ export default function SalaryScreen() {
     </View>
   );
 }
-

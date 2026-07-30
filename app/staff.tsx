@@ -84,10 +84,6 @@ function staffDisplayName(m: StaffMember) {
  return m.name || m.email;
 }
 
-function randomTempPassword(): string {
- return Math.random().toString(36).slice(-8) + "!1";
-}
-
 function roleLabel(role: string) {
  return (
  { owner: "Owner", manager: "Manager", staff: "Cashier / Biller", field_agent: "Field Agent", warehouse_manager: "Warehouse Manager" }[role] ?? role
@@ -136,7 +132,6 @@ export default function StaffScreen() {
  const [addLastName, setAddLastName] = useState("");
  const [addEmail, setAddEmail] = useState("");
  const [addPhone, setAddPhone] = useState("");
- const [addPassword, setAddPassword] = useState("");
  // Many employees (warehouse loaders, helpers, delivery staff) never log
  // into any app — this shop just needs their attendance/salary tracked.
  const [addNeedsLogin, setAddNeedsLogin] = useState(true);
@@ -187,7 +182,6 @@ export default function StaffScreen() {
  setAddLastName("");
  setAddEmail("");
  setAddPhone("");
- setAddPassword("");
  setAddNeedsLogin(true);
  setAddRole(activeCompany?.default_staff_role || "staff");
  };
@@ -197,8 +191,7 @@ export default function StaffScreen() {
  addFirstName.trim() !== "" ||
  addLastName.trim() !== "" ||
  addEmail.trim() !== "" ||
- addPhone.trim() !== "" ||
- addPassword.trim() !== "";
+ addPhone.trim() !== "";
  if (hasChanges) {
  const ok = await confirm({
  title: "Discard changes?",
@@ -217,24 +210,22 @@ export default function StaffScreen() {
  Alert.alert("Required Fields", "First name is required.");
  return;
  }
- if (addNeedsLogin && (!addEmail.trim() || !addPassword.trim())) {
- Alert.alert("Required Fields", "Email and password are required to give this employee login access — or turn that off if they don't need it.");
+ if (addNeedsLogin && !addEmail.trim()) {
+ Alert.alert("Required Fields", "Email is required to give this employee login access, or turn login access off.");
  return;
  }
  setAddSubmitting(true);
  try {
- await api.post("/staff", {
- first_name: addFirstName.trim(),
- last_name: addLastName.trim() || undefined,
+ const result = await api.post<{ invitation_sent?: boolean }>("/staff", {
+ firstName: addFirstName.trim(),
+ lastName: addLastName.trim() || undefined,
  email: addNeedsLogin ? addEmail.trim() : undefined,
  phone: addPhone.trim() || undefined,
- password: addNeedsLogin ? addPassword : undefined,
  role: addRole,
  });
  const createdPhone = addPhone.trim();
  const createdName = `${addFirstName.trim()}${addLastName.trim() ? " " + addLastName.trim() : ""}`;
  const createdEmail = addEmail.trim();
- const createdPassword = addPassword;
  const createdRole = addRole;
  const createdNeedsLogin = addNeedsLogin;
  setIsAdding(false);
@@ -244,11 +235,13 @@ export default function StaffScreen() {
  if (createdNeedsLogin && createdPhone) {
  const ok = await confirm({
  title: "Employee Created",
- message: `Send ${createdName}'s login to them over WhatsApp now?`,
- confirmLabel: "Send via WhatsApp",
+ message: result.invitation_sent
+   ? `A secure password setup link was emailed to ${createdEmail}. Send the app instructions over WhatsApp too?`
+   : `The employee was added, but the password setup email failed. Send app instructions now and retry the email before they sign in.`,
+ confirmLabel: "Send Instructions",
  });
  if (ok) {
- const message = `Hi ${createdName}! You've been added to ${activeCompany?.name ?? "our team"} on the MMC Agent app.\n\n1. Download the app: ${AGENT_APP_DOWNLOAD_URL}\n2. Log in with:\nEmail: ${createdEmail}\nPassword: ${createdPassword}\n\nPlease change your password after logging in.`;
+ const message = `Hi ${createdName}! You've been added to ${activeCompany?.name ?? "our team"} on the MMC Agent app.\n\n1. Check ${createdEmail} for your secure password setup link.\n2. Download the app: ${AGENT_APP_DOWNLOAD_URL}\n3. Sign in with ${createdEmail} after setting your password.`;
  const url = `whatsapp://send?text=${encodeURIComponent(message)}&phone=+91${createdPhone.replace(/\D/g, "")}`;
  const supported = await Linking.canOpenURL(url);
  if (supported) await Linking.openURL(url);
@@ -505,7 +498,7 @@ export default function StaffScreen() {
  </View>
  {!addNeedsLogin && (
  <Text className="text-xs text-on-surface-variant -mt-2">
- No email or password needed — they&apos;ll still show up for attendance and salary, they just won&apos;t be able to log in anywhere.
+ No email is needed. They&apos;ll still show up for attendance and salary, but cannot log in.
  </Text>
  )}
 
@@ -538,23 +531,9 @@ export default function StaffScreen() {
  className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-medium"
  />
  </View>
- <View>
- <View className="flex-row items-center justify-between mb-2">
- <Text className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider">
- Temporary Password *
+ <Text className="text-xs text-on-surface-variant">
+ We&apos;ll email a one-time link so the employee can set a private password.
  </Text>
- <Pressable onPress={() => setAddPassword(randomTempPassword())}>
- <Text className="text-sm font-bold text-primary ">Auto-Generate</Text>
- </Pressable>
- </View>
- <TextInput
- value={addPassword}
- onChangeText={setAddPassword}
- placeholder="Enter a password"
- placeholderTextColor="#A0A0A0"
- className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-3.5 font-mono"
- />
- </View>
  </>
  )}
  </View>

@@ -26,6 +26,10 @@ function labelFromFilename(filename: string): string {
   return withoutTimestamp.replace(/-/g, " ");
 }
 
+function documentFilename(label: string): string {
+  return `${label}-${Date.now()}.jpg`;
+}
+
 export default function DocumentsScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -73,7 +77,7 @@ export default function DocumentsScreen() {
     try {
       if (!docsDir.exists) docsDir.create();
       const safeLabel = labelHint.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const dest = new File(docsDir, `${safeLabel}-${Date.now()}.jpg`);
+      const dest = new File(docsDir, documentFilename(safeLabel));
       const src = new File(result.assets[0].uri);
       await src.copy(dest);
       load();
@@ -175,4 +179,3 @@ export default function DocumentsScreen() {
     </View>
   );
 }
-
