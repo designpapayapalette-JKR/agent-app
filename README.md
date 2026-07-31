@@ -25,7 +25,7 @@ npx expo start --dev-client
 
 ## Not installed yet
 
-`expo-location` (background), `expo-camera`, the LiveKit RN client SDK, and `expo-image-picker` (expense slip uploads) are added when each feature is actually built (Phase 3), not during scaffolding.
+`expo-location` (background), `expo-camera`, and `expo-image-picker` (expense slip uploads) are added when each feature is actually built (Phase 3), not during scaffolding.
 
 ## Design note
 

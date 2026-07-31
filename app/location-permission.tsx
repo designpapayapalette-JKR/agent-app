@@ -33,7 +33,7 @@ export default function LocationPermissionScreen() {
 
     setRequesting(true);
     try {
-      // Trigger dynamic permission requests for Location, Camera, Microphone, Bluetooth, Call Logs/Phone State, WiFi state
+      // Request only the location, camera, Bluetooth, and WiFi permissions used by the app.
       const res = await requestAppPermissions();
 
       if (!res.locationForeground) {
@@ -158,4 +158,3 @@ export default function LocationPermissionScreen() {
     </ScrollView>
   );
 }
-

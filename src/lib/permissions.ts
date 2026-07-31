@@ -3,7 +3,7 @@ import { safeRequireExpoLocation } from "./isExpoGo";
 import { Camera } from "expo-camera";
 
 /**
- * Prompts the user for all required sensor permissions (Location, Background Location, Camera, Microphone, Bluetooth, WiFi).
+ * Prompts the user for required location, camera, Bluetooth, and WiFi permissions.
  * Complies with Google Play and Apple App Store guidelines by isolating OS-specific APIs.
  *
  * Deliberately does NOT request READ_PHONE_STATE / READ_CALL_LOG — these are
