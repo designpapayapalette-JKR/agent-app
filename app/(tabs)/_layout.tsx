@@ -178,10 +178,6 @@ export default function TabsLayout() {
         options={{ title: "Estimates", href: null }}
       />
       <Tabs.Screen
-        name="employee-advances"
-        options={{ title: "Employee Advances", href: null }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: t("staff")?.includes("कामगार") ? "प्रोफ़ाइल" : "Profile",

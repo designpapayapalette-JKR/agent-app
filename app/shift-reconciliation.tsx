@@ -139,7 +139,7 @@ export default function ShiftReconciliationScreen() {
                color={shift.status === "reconciled" ? theme.colors.primary : shift.discrepancy && Number(shift.discrepancy) !== 0 ? theme.colors.error : theme.colors.tertiary}
  />
  <Text className="font-bold text-on-surface">
- {shift.user?.firstName} {shift.user?.lastName || ""}
+ {shift.user?.first_name || shift.user?.firstName} {shift.user?.last_name || shift.user?.lastName || ""}
  </Text>
  </View>
  <Text className="text-xs text-on-surface-variant">{formatTime(shift.openedAt)}</Text>
