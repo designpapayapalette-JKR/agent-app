@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MMC Staff",
+    "name": "MMC Agent",
     "slug": "agent-app",
     "scheme": "mmcagent",
     "version": "0.2.0",
