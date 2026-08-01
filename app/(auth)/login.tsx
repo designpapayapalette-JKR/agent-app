@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "react-native-paper";
 import { useAuth } from "../../src/lib/auth-context";
+import { CompanySelectionRequiredError } from "../../src/lib/api";
 
 // Bold gradient hero + floating card + gradient CTA — mirrors
 // shopkeeper-app's login redesign (see memory feedback_ui_visual_quality.md:
@@ -115,8 +116,10 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCompanySelect, setShowCompanySelect] = useState(false);
+  const [companiesList, setCompaniesList] = useState<{ id: string; name: string }[]>([]);
 
-  const handleLogin = async () => {
+  const handleLogin = async (selectedCompanyId?: string) => {
     setError(null);
     if (isPinLogin) {
       if (!pin || pin.length < 4) {
@@ -142,9 +145,14 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, selectedCompanyId);
     } catch (err: any) {
-      setError(err.message || "Invalid email or password.");
+      if (err instanceof CompanySelectionRequiredError) {
+        setCompaniesList(err.companies);
+        setShowCompanySelect(true);
+      } else {
+        setError(err.message || "Invalid email or password.");
+      }
     } finally {
       setLoading(false);
     }
@@ -159,116 +167,174 @@ export default function LoginScreen() {
         <LoginHero />
         <View className="px-6 pb-12 flex-1 max-w-md mx-auto w-full" style={{ marginTop: -16 }}>
           {/* Form Card */}
-          <View
-            className="bg-surface dark:bg-surface-dark p-6 rounded-3xl"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.12,
-              shadowRadius: 20,
-              elevation: 8,
-            }}
-          >
-            <Text
-              className="text-xl font-bold text-on-surface dark:text-on-surface mb-6"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
+          {showCompanySelect ? (
+            <View
+              className="bg-surface dark:bg-surface-dark p-6 rounded-3xl"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.12,
+                shadowRadius: 20,
+                elevation: 8,
+              }}
             >
-              {isPinLogin ? "Quick PIN Login" : "Sign In to Account"}
-            </Text>
+              <Text className="text-xl font-bold text-on-surface dark:text-on-surface mb-2">
+                Select Business
+              </Text>
+              <Text className="text-on-surface-variant text-sm font-medium mb-4">
+                We found multiple businesses under your email. Please select one:
+              </Text>
 
               {error && (
-              <View className="bg-error-container border border-error rounded-xl p-4 mb-4">
-                <Text className="text-error font-semibold text-base">{error}</Text>
-              </View>
-            )}
-
-            {!isPinLogin ? (
-              <View className="space-y-4">
-                <View>
-                  <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
-                    Email Address
-                  </Text>
-                  <TextInput
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Enter your email"
-                    placeholderTextColor={theme.colors.onSurfaceVariant}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 text-base font-medium"
-                  />
+                <View className="bg-error-container border border-error rounded-xl p-4 mb-4">
+                  <Text className="text-error font-semibold text-base">{error}</Text>
                 </View>
+              )}
 
-                <View className="mt-4">
-                  <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
-                    Password
-                  </Text>
-                  <View className="relative justify-center">
+              <ScrollView className="max-h-60 mb-4" style={{ maxHeight: 240 }}>
+                {companiesList.map((c) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => handleLogin(c.id)}
+                    disabled={loading}
+                    className="flex-row items-center justify-between p-4 rounded-xl border mb-2"
+                    style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <View className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#f1f5f9" }}>
+                        <MaterialCommunityIcons name="store" size={20} color="#6366f1" />
+                      </View>
+                      <View style={{ flexShrink: 1 }}>
+                        <Text className="text-sm font-bold text-on-surface">{c.name}</Text>
+                        <Text className="text-xs text-on-surface-variant">ID: {c.id.substring(0, 8)}</Text>
+                      </View>
+                    </View>
+                    <Text className="text-xs font-bold text-primary">Open →</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              <Pressable
+                onPress={() => { setShowCompanySelect(false); setError(null); }}
+                className="py-3 items-center"
+                accessibilityRole="button"
+                accessibilityLabel="Back to log in"
+              >
+                <Text className="text-on-surface-variant font-semibold text-sm">Back to log in</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View
+              className="bg-surface dark:bg-surface-dark p-6 rounded-3xl"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.12,
+                shadowRadius: 20,
+                elevation: 8,
+              }}
+            >
+              <Text
+                className="text-xl font-bold text-on-surface dark:text-on-surface mb-6"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                {isPinLogin ? "Quick PIN Login" : "Sign In to Account"}
+              </Text>
+
+              {error && (
+                <View className="bg-error-container border border-error rounded-xl p-4 mb-4">
+                  <Text className="text-error font-semibold text-base">{error}</Text>
+                </View>
+              )}
+
+              {!isPinLogin ? (
+                <View className="space-y-4">
+                  <View>
+                    <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
+                      Email Address
+                    </Text>
                     <TextInput
-                      value={password}
-                      onChangeText={setPassword}
-                      placeholder="Enter your password"
+                      value={email}
+                      onChangeText={setEmail}
+                      placeholder="Enter your email"
                       placeholderTextColor={theme.colors.onSurfaceVariant}
-                      secureTextEntry={!showPassword}
                       autoCapitalize="none"
-                      className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 pr-12 text-base font-medium"
+                      keyboardType="email-address"
+                      className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 text-base font-medium"
                     />
-                    <Pressable
-                      onPress={() => setShowPassword((v) => !v)}
-                      hitSlop={8}
-                      style={{ position: "absolute", right: 14 }}
-                      accessibilityRole="button"
-                      accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                    >
-                      <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.colors.onSurfaceVariant} />
-                    </Pressable>
+                  </View>
+
+                  <View className="mt-4">
+                    <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
+                      Password
+                    </Text>
+                    <View className="relative justify-center">
+                      <TextInput
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Enter your password"
+                        placeholderTextColor={theme.colors.onSurfaceVariant}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 pr-12 text-base font-medium"
+                      />
+                      <Pressable
+                        onPress={() => setShowPassword((v) => !v)}
+                        hitSlop={8}
+                        style={{ position: "absolute", right: 14 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                      >
+                        <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.colors.onSurfaceVariant} />
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ) : (
-              <View>
-                <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
-                  Enter 4-Digit PIN
-                </Text>
-                <TextInput
-                  value={pin}
-                  onChangeText={setPin}
-                  placeholder="••••"
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                  secureTextEntry
-                  maxLength={4}
-                  keyboardType="number-pad"
-                  className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 font-bold text-3xl text-center tracking-widest"
-                />
-                <Text className="text-xs text-on-surface-variant mt-3">
-                  Tip: Switch to email login if your session expired.
-                </Text>
-              </View>
-            )}
+              ) : (
+                <View>
+                  <Text className="text-sm font-semibold text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider mb-2">
+                    Enter 4-Digit PIN
+                  </Text>
+                  <TextInput
+                    value={pin}
+                    onChangeText={setPin}
+                    placeholder="••••"
+                    placeholderTextColor={theme.colors.onSurfaceVariant}
+                    secureTextEntry
+                    maxLength={4}
+                    keyboardType="number-pad"
+                    className="bg-surface-container-lowest text-on-surface border border-outline-variant rounded-xl px-4 py-4 font-bold text-3xl text-center tracking-widest"
+                  />
+                  <Text className="text-xs text-on-surface-variant mt-3">
+                    Tip: Switch to email login if your session expired.
+                  </Text>
+                </View>
+              )}
 
-            {/* Login Button */}
-            <GradientButton label={isPinLogin ? "Enter" : "Sign In"} onPress={handleLogin} disabled={loading} loading={loading} />
+              {/* Login Button */}
+              <GradientButton label={isPinLogin ? "Enter" : "Sign In"} onPress={() => handleLogin()} disabled={loading} loading={loading} />
 
-            {/* Toggle PIN / Email login — PIN option only shown once a PIN has
-                actually been set up on this device (Profile → Set Quick PIN) */}
-            {(isPinLogin || pinLoginAvailable) && (
-              <Pressable
-                onPress={() => {
-                  setIsPinLogin(!isPinLogin);
-                  setError(null);
-                }}
-                className="mt-6 py-3 items-center"
-                accessibilityRole="button"
-                accessibilityLabel={isPinLogin ? "Switch to email login" : "Switch to quick PIN login"}
-              >
-                <Text className="text-primary font-semibold text-base">
-                  {isPinLogin ? "Use Email & Password" : "Use Quick PIN"}
-                </Text>
-              </Pressable>
-            )}
-          </View>
+              {/* Toggle PIN / Email login — PIN option only shown once a PIN has
+                  actually been set up on this device (Profile → Set Quick PIN) */}
+              {(isPinLogin || pinLoginAvailable) && (
+                <Pressable
+                  onPress={() => {
+                    setIsPinLogin(!isPinLogin);
+                    setError(null);
+                  }}
+                  className="mt-6 py-3 items-center"
+                  accessibilityRole="button"
+                  accessibilityLabel={isPinLogin ? "Switch to email login" : "Switch to quick PIN login"}
+                >
+                  <Text className="text-primary font-semibold text-base">
+                    {isPinLogin ? "Use Email & Password" : "Use Quick PIN"}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

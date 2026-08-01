@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { api, login as apiLogin, logout as apiLogout, fetchMe, hasStoredSession } from "./api";
+import { api, login as apiLogin, logout as apiLogout, fetchMe, hasStoredSession, CompanySelectionRequiredError } from "./api";
 import { setPin, verifyPin, hasPin, setLastUserId, getLastUserId } from "./pin";
 import { clearReadCache } from "./readCache";
 import type { UserRole } from "./moduleCategories";
@@ -13,7 +13,7 @@ interface AuthContextType {
   activeBrand: any | null;
   availableBrands: any[];
   setActiveBrand: (brand: any | null) => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, companyId?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshBrands: () => Promise<void>;
   refreshAllData: () => Promise<void>;
@@ -102,14 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, companyId?: string) => {
     // Deliberately does NOT touch the global isLoading flag — that flag
     // controls whether the root layout renders the whole app as a blank
     // spinner (only appropriate for the initial boot-time auth check).
     // Toggling it here used to unmount the login screen mid-request on
     // every attempt, silently discarding any error message.
     try {
-      const me = await apiLogin(email, password);
+      const me = await apiLogin(email, password, companyId);
       setUser(me);
       setIsAuthenticated(true);
       await setLastUserId(me.id);

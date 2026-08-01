@@ -220,8 +220,22 @@ export const api = {
 // expects — read them before the generic snake_case conversion applied to
 // everything else, by reading the pre-conversion field names here since
 // request() already ran toSnakeCase on the whole payload.
-export async function login(email: string, password: string) {
-  const json: any = await request<any>("POST", "/auth/login", { email, password }, { skipAuth: true });
+export class CompanySelectionRequiredError extends Error {
+  companies: { id: string; name: string }[];
+  constructor(companies: { id: string; name: string }[]) {
+    super("Company selection required");
+    this.companies = companies;
+  }
+}
+
+export async function login(email: string, password: string, companyId?: string) {
+  const json: any = await request<any>("POST", "/auth/login", { email, password, companyId }, { skipAuth: true });
+  if (json.requires_company_selection && Array.isArray(json.companies)) {
+    throw new CompanySelectionRequiredError(json.companies.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+    })));
+  }
   await setAuthData({ accessToken: json.access_token, refreshToken: json.refresh_token, expiresAt: json.expires_at });
   return json.user;
 }
