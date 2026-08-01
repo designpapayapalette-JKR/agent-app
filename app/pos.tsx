@@ -965,6 +965,7 @@ party_id: checkoutParty.id,
 brand_id: activeBrand?.id,
 warehouse_id: defaultWarehouseId,
 type: invoiceType,
+invoiceType: invoiceType,
 payment_mode: isSplitPayment ? undefined : paymentMode,
 payments: isSplitPayment
 ? splitPayments
